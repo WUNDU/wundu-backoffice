@@ -1,146 +1,95 @@
 // TicketManagementPage.tsx
-import { CheckCircle, MessageSquare, PlusCircle, Search, XCircle } from 'lucide-react';
-import { useState, } from 'react';
-import { AdminLayout } from '~/components/dashboard/AdminLayout'; // Ajuste o caminho conforme necessário
-
-// Dados simulados para tickets
-const mockTickets = [
-  { id: 'TKT001', subject: 'Problema ao aceder relatórios financeiros', requester: 'joao.s@example.com', status: 'open', priority: 'high', createdAt: '2025-05-20 14:30', lastUpdate: '2025-05-22 09:00' },
-  { id: 'TKT002', subject: 'Erro na importação de dados de transação', requester: 'maria.s@example.com', status: 'open', priority: 'high', createdAt: '2025-05-21 10:00', lastUpdate: '2025-05-21 16:00' },
-  { id: 'TKT003', subject: 'Dúvida sobre permissões de usuário', requester: 'pedro.c@example.com', status: 'closed', priority: 'medium', createdAt: '2025-05-18 11:45', lastUpdate: '2025-05-19 10:00' },
-  { id: 'TKT004', subject: 'Solicitação de nova funcionalidade de relatório', requester: 'ana.p@example.com', status: 'open', priority: 'low', createdAt: '2025-05-22 08:10', lastUpdate: '2025-05-22 08:10' },
-  { id: 'TKT005', subject: 'Problema de acesso ao dashboard móvel', requester: 'carlos.l@example.com', status: 'pending', priority: 'medium', createdAt: '2025-05-19 17:00', lastUpdate: '2025-05-20 14:00' },
-  { id: 'TKT006', subject: 'Erro na geração de recibos', requester: 'joana.m@example.com', status: 'open', priority: 'high', createdAt: '2025-05-22 11:20', lastUpdate: '2025-05-22 11:20' },
-  { id: 'TKT007', subject: 'Relatório de bug: filtro de data não funciona', requester: 'rui.g@example.com', status: 'closed', priority: 'high', createdAt: '2025-05-15 09:00', lastUpdate: '2025-05-17 15:30' },
-];
+import { Bell, CheckCircle, MessageSquare, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AdminLayout } from '~/components/dashboard/AdminLayout';
+import { notificationsService } from '~/services/admin/notifications.service';
+import type { AdminNotification } from '~/types/admin';
 
 export default function TicketManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'open', 'closed', 'pending'
-  const [tickets, setTickets] = useState(mockTickets); // Estado para permitir atualização de status
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredTickets = tickets.filter(ticket => {
-    const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || ticket.status === filterStatus;
+  useEffect(() => {
+    notificationsService.list({ size: 50 })
+      .then((r) => setNotifications(r.content))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filteredNotifications = notifications.filter(n => {
+    const matchesSearch = n.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      n.message.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || (filterStatus === 'read' ? n.isRead : !n.isRead);
     return matchesSearch && matchesStatus;
   });
 
-  const handleUpdateTicketStatus = (id: string, newStatus: 'open' | 'closed' | 'pending') => {
-    setTickets(prevTickets =>
-      prevTickets.map(ticket =>
-        ticket.id === id ? { ...ticket, status: newStatus, lastUpdate: new Date().toLocaleString() } : ticket
-      )
-    );
-    alert(`Ticket ${id} atualizado para status: ${newStatus}`); // Usando alert apenas para simulação de ação
-  };
-
-  const getStatusClasses = (status: string) => {
-    switch (status) {
-      case 'open': return 'bg-blue-100 text-blue-800';
-      case 'closed': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPriorityClasses = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'text-red-600';
-      case 'medium': return 'text-yellow-600';
-      case 'low': return 'text-green-600';
-      default: return 'text-gray-600';
-    }
-  };
-
   return (
     <AdminLayout>
-      <div className="animate-fadeInUp">
-        <h1 className="text-2xl font-bold text-dark mb-6">Gerenciamento de Tickets</h1>
-        <p className="text-gray-600 mb-8">Gerencie e acompanhe todos os tickets de suporte do sistema.</p>
+      <div className="px-6 py-5 space-y-5">
+        <h1 className="text-[22px] font-semibold tracking-tight text-gray-900">Notificações</h1>
+        <p className="text-[13px] text-gray-500">Visualize e gerencie notificações dos utilizadores.</p>
 
-        {/* Barra de pesquisa e filtros */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
+        <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 md:space-x-4">
           <div className="relative flex-1 w-full md:max-w-sm">
             <input
               type="text"
-              placeholder="Pesquisar tickets por assunto ou solicitante..."
-              className="pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary"
+              placeholder="Pesquisar notificações..."
+              className="pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:border-[#003cc3] focus:ring-[#003cc3]/20"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <Search size={16} className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
-          <div className="flex space-x-2">
-            <select
-              className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary cursor-pointer"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="all">Todos os Status</option>
-              <option value="open">Abertos</option>
-              <option value="pending">Pendentes</option>
-              <option value="closed">Fechados</option>
-            </select>
-            <button className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-secondary transition-colors duration-200">
-              <PlusCircle size={16} className="mr-2" />
-              <span>Novo Ticket</span>
-            </button>
-          </div>
+          <select
+            className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:border-[#003cc3] focus:ring-[#003cc3]/20 cursor-pointer"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="all">Todas</option>
+            <option value="unread">Não lidas</option>
+            <option value="read">Lidas</option>
+          </select>
         </div>
 
-        {/* Lista de Tickets */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-semibold text-dark mb-4">Tickets Atuais</h2>
+        <div className="rounded-md border border-gray-200 bg-white p-6">
+          <h2 className="text-[15px] font-semibold text-gray-900 mb-4">Lista de Notificações</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assunto</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Solicitante</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prioridade</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Atualização</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mensagem</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lida</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredTickets.length > 0 ? (
-                  filteredTickets.map(ticket => (
-                    <tr key={ticket.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ticket.id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{ticket.subject}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{ticket.requester}</td>
+                {loading ? (
+                  <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500">A carregar...</td></tr>
+                ) : filteredNotifications.length > 0 ? (
+                  filteredNotifications.map(n => (
+                    <tr key={n.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClasses(ticket.status)}`}>
-                          {ticket.status === 'open' ? 'Aberto' : ticket.status === 'closed' ? 'Fechado' : 'Pendente'}
-                        </span>
+                        <Bell size={16} className="text-[#003cc3]" />
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${getPriorityClasses(ticket.priority)}`}>
-                        {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{n.title}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">{n.message}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {n.isRead
+                          ? <CheckCircle size={16} className="text-green-500" />
+                          : <MessageSquare size={16} className="text-yellow-500" />}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.lastUpdate}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button className="text-secondary hover:text-primary mr-3" onClick={() => alert(`Simulando resposta ao Ticket ${ticket.id}`)}>
-                          <MessageSquare size={16} />
-                        </button>
-                        {ticket.status !== 'closed' ? (
-                          <button className="text-green-600 hover:text-green-800" onClick={() => handleUpdateTicketStatus(ticket.id, 'closed')}>
-                            <CheckCircle size={16} />
-                          </button>
-                        ) : (
-                          <button className="text-tertiary hover:text-red-700" onClick={() => handleUpdateTicketStatus(ticket.id, 'open')}>
-                            <XCircle size={16} />
-                          </button>
-                        )}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(n.createdAt).toLocaleString('pt-BR')}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500">Nenhum ticket encontrado com os filtros aplicados.</td>
+                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">Nenhuma notificação encontrada.</td>
                   </tr>
                 )}
               </tbody>

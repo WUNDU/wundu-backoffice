@@ -13,72 +13,48 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   const Icon = icon;
   const [displayedValue, setDisplayedValue] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    if (value === 0) {
-      setDisplayedValue(0);
-      return;
-    }
-
-    setIsAnimating(true);
-    const endValue = value;
-    const duration = 1500; // 1.5 seconds animation
+    if (value === 0) { setDisplayedValue(0); return; }
+    const duration = 1200;
     const startTime = Date.now();
-
-    const animateCount = () => {
-      const currentTime = Date.now();
-      const progress = Math.min((currentTime - startTime) / duration, 1);
-
-      // Use easing function for smoother animation
-      const easedProgress = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-
-      const currentValue = Math.floor(easedProgress * endValue);
-      setDisplayedValue(currentValue);
-
-      if (progress < 1) {
-        requestAnimationFrame(animateCount);
-      } else {
-        setDisplayedValue(endValue);
-        setIsAnimating(false);
-      }
+    const animate = () => {
+      const progress = Math.min((Date.now() - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayedValue(Math.floor(eased * value));
+      if (progress < 1) requestAnimationFrame(animate);
+      else setDisplayedValue(value);
     };
-
-    // Start animation after a small delay
-    const timer = setTimeout(() => {
-      requestAnimationFrame(animateCount);
-    }, 100);
-
-    return () => {
-      clearTimeout(timer);
-      setIsAnimating(false);
-    };
+    const t = setTimeout(() => requestAnimationFrame(animate), 80);
+    return () => clearTimeout(t);
   }, [value, title]);
 
+  const iconColors: Record<string, string> = {
+    primary: 'bg-[#00216b]/[0.08] text-[#00216b]',
+    secondary: 'bg-[#003cc3]/[0.08] text-[#003cc3]',
+    success: 'bg-green-50 text-green-600',
+    danger: 'bg-red-50 text-red-600',
+  };
+
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md animate-fadeInUp"> {/* Reduced padding from p-6 to p-4 */}
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-2 rounded-lg ${color === 'primary' ? 'bg-primary/10 text-primary' :
-          color === 'secondary' ? 'bg-secondary/10 text-secondary' :
-            color === 'success' ? 'bg-green-100 text-green-600' :
-              'bg-red-100 text-red-600'
-          }`}>
-          <Icon size={20} />
+    <div className="rounded-md border border-gray-200 bg-white p-4">
+      <div className="flex justify-between items-start mb-3">
+        <div className={`p-2 rounded-md ${iconColors[color] ?? iconColors.primary}`}>
+          <Icon size={16} />
         </div>
         {trend && percentage !== undefined && (
-          <div className={`flex items-center text-xs font-medium ${percentage > 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {percentage > 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={15} />}
-            <span>{Math.abs(percentage)}%</span>
+          <div className={`flex items-center gap-0.5 text-[11px] font-medium ${percentage > 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {percentage > 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+            {Math.abs(percentage)}%
           </div>
         )}
       </div>
-      <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-      {/* Further adjusted font size for responsiveness to ensure numbers appear well on all screens */}
-      <p className={`text-base sm:text-lg md:text-xl font-bold mt-1 text-dark transition-all duration-300 ${isAnimating ? 'text-primary' : ''}`}>
+      <div className="text-[11px] font-medium uppercase tracking-wider text-gray-500 mb-1">{title}</div>
+      <div className="font-mono text-[22px] font-semibold tabular-nums text-gray-900">
         {isCurrency
           ? new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(displayedValue)
           : displayedValue.toLocaleString()}
-      </p>
+      </div>
     </div>
   );
 };

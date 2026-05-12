@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   DollarSign,
   TrendingUp,
@@ -9,12 +9,13 @@ import {
   Target,
   Users
 } from 'lucide-react';
-import { ChartData } from '~/types/types';
-import { annualFinancialPerformance, topExpenseCategoriesReport, topIncomeSourcesReport } from '~/datas/mockData';
 import { Card } from '~/components/dashboard/Card';
 import { ChartCard } from '~/components/dashboard/ChartCard';
 import { BarChartCard } from '~/components/dashboard/BarChartCard';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
+import { dashboardService } from '~/services/admin/dashboard.service';
+import { transactionsService } from '~/services/admin/transactions.service';
+import type { DashboardStats, AdminTransactionSummary } from '~/types/admin';
 
 /**
  * ReportsPage Component
@@ -23,61 +24,62 @@ import { AdminLayout } from '~/components/dashboard/AdminLayout';
  * user financial data. It includes summary cards, various charts, and filtering options.
  */
 const ReportsPage: React.FC = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('all'); // e.g., 'all', 'last-3-months', 'last-year'
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [transactions, setTransactions] = useState<AdminTransactionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Memoized filtered financial performance data
-  const filteredAnnualFinancialPerformance: ChartData[] = useMemo(() => {
-    let data = annualFinancialPerformance;
+  useEffect(() => {
+    Promise.all([
+      dashboardService.getStats(),
+      transactionsService.list({ size: 200, sort: 'transactionDate,asc' }),
+    ])
+      .then(([s, t]) => { setStats(s); setTransactions(t.content); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
-    // Implement filtering based on selectedPeriod or custom date range
-    if (selectedPeriod === 'last-3-months') {
-      // Logic to get last 3 months data
-      // For mock data, we'll just take the last 3 entries as an example
-      data = annualFinancialPerformance.slice(-3);
-    } else if (selectedPeriod === 'last-year') {
-      // For mock data, assume annualFinancialPerformance covers a year
-      data = annualFinancialPerformance;
-    } else if (startDate && endDate) {
-      // Advanced date range filtering logic (requires more robust date parsing)
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      data = annualFinancialPerformance.filter(item => {
-        const itemDate = new Date(`2025-${item.month}-01`); // Assuming 2025 for mock data
-        return itemDate >= start && itemDate <= end;
-      });
-    }
+  const filteredAnnualFinancialPerformance = useMemo(() => {
+    const monthly: Record<string, { month: string; receita: number; despesa: number; net: number }> = {};
+    transactions.forEach(tx => {
+      const m = new Date(tx.transactionDate).toLocaleString('pt-BR', { month: 'short' });
+      if (!monthly[m]) monthly[m] = { month: m, receita: 0, despesa: 0, net: 0 };
+      if (tx.type === 'INCOME') monthly[m].receita += tx.amount;
+      else monthly[m].despesa += tx.amount;
+      monthly[m].net = monthly[m].receita - monthly[m].despesa;
+    });
+    let data = Object.values(monthly);
+    if (selectedPeriod === 'last-3-months') data = data.slice(-3);
     return data;
-  }, [selectedPeriod, startDate, endDate]);
+  }, [transactions, selectedPeriod, startDate, endDate]);
 
-  // Calculate summary metrics from filtered data
-  const totalReportIncome = useMemo(() => {
-    return filteredAnnualFinancialPerformance.reduce((sum, item) => sum + (item.receita || 0), 0);
-  }, [filteredAnnualFinancialPerformance]);
+  const totalReportIncome = useMemo(() => filteredAnnualFinancialPerformance.reduce((s, i) => s + (i.receita || 0), 0), [filteredAnnualFinancialPerformance]);
+  const totalReportExpenses = useMemo(() => filteredAnnualFinancialPerformance.reduce((s, i) => s + (i.despesa || 0), 0), [filteredAnnualFinancialPerformance]);
+  const totalReportNetBalance = totalReportIncome - totalReportExpenses;
+  const totalTransactionsCount = stats?.totalTransactions ?? 0;
 
-  const totalReportExpenses = useMemo(() => {
-    return filteredAnnualFinancialPerformance.reduce((sum, item) => sum + (item.despesa || 0), 0);
-  }, [filteredAnnualFinancialPerformance]);
+  const topExpenseCategoriesReport = useMemo(() => {
+    const map: Record<string, number> = {};
+    transactions.filter(t => t.type === 'EXPENSE').forEach(t => { map[t.categoryName] = (map[t.categoryName] || 0) + t.amount; });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, value]) => ({ name, value }));
+  }, [transactions]);
 
-  const totalReportNetBalance = useMemo(() => {
-    return filteredAnnualFinancialPerformance.reduce((sum, item) => sum + (item.net || 0), 0);
-  }, [filteredAnnualFinancialPerformance]);
-
-  const totalTransactionsCount = useMemo(() => {
-    // This would ideally come from a separate data source or calculated from detailed transactions
-    // For now, a simple mock value or sum of income/expense counts
-    return filteredAnnualFinancialPerformance.length * 200; // Example: 200 transactions per month
-  }, [filteredAnnualFinancialPerformance]);
+  const topIncomeSourcesReport = useMemo(() => {
+    const map: Record<string, number> = {};
+    transactions.filter(t => t.type === 'INCOME').forEach(t => { map[t.categoryName] = (map[t.categoryName] || 0) + t.amount; });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, value]) => ({ name, value }));
+  }, [transactions]);
 
   return (
     <AdminLayout>
-      <div className="space-y-8 p-4 md:p-6 animate-fadeIn">
+      <div className="px-6 py-5 space-y-5">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-          <h2 className="text-3xl font-bold text-dark mb-4 sm:mb-0">Relatórios e Análises</h2>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <h2 className="text-[22px] font-semibold tracking-tight text-gray-900">Relatórios e Análises</h2>
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-            <button className="flex items-center justify-center px-6 py-3 bg-primary text-white rounded-lg shadow-md hover:bg-primary-dark transition-all duration-300 transform hover:scale-105">
+            <button className="flex items-center justify-center px-6 py-3 bg-[#00216b] text-white rounded-lg shadow-md hover:bg-[#003cc3] transition-all duration-300 transform hover:scale-105">
               <ClipboardList size={20} className="mr-2" />
               Gerar Relatório Personalizado
             </button>
@@ -120,15 +122,15 @@ const ReportsPage: React.FC = () => {
         </div>
 
         {/* Filters Section */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 animate-fadeInUp">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <Filter size={20} className="mr-2 text-primary" /> Opções de Relatório
+        <div className="rounded-md border border-gray-200 bg-white p-6">
+          <h3 className="text-[15px] font-semibold text-gray-900 mb-4 flex items-center">
+            <Filter size={20} className="mr-2 text-[#00216b]" /> Opções de Relatório
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Period Filter */}
             <div className="relative">
               <select
-                className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:border-[#003cc3] focus:ring-[#003cc3]/20 transition-all duration-200"
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
               >
@@ -146,7 +148,7 @@ const ReportsPage: React.FC = () => {
                 <div className="relative">
                   <input
                     type="date"
-                    className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                    className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-[#003cc3] focus:ring-[#003cc3]/20 transition-all duration-200"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
@@ -154,7 +156,7 @@ const ReportsPage: React.FC = () => {
                 <div className="relative">
                   <input
                     type="date"
-                    className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                    className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-[#003cc3] focus:ring-[#003cc3]/20 transition-all duration-200"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
@@ -191,7 +193,7 @@ const ReportsPage: React.FC = () => {
           />
 
           {/* Placeholder for another chart, e.g., Budget vs. Actual */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-center animate-fadeInUp">
+          <div className="rounded-md border border-gray-200 bg-white p-6 flex items-center justify-center">
             <div className="text-center text-gray-500">
               <Target size={48} className="mx-auto mb-3 text-gray-400" />
               <p className="font-medium text-lg">Relatório de Orçamento vs. Real</p>

@@ -4,8 +4,6 @@ import {
   UserPlus,
   Bell,
   ShieldAlert,
-  ChevronDown,
-  Filter,
   ChevronRight,
   Info,
   Activity,
@@ -16,11 +14,9 @@ import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { Card } from '~/components/dashboard/Card';
 import { ChartCard } from '~/components/dashboard/ChartCard';
 import { TransactionItem } from '~/components/dashboard/TransactionItem';
-
-import { expenseData, incomeData, recentTransactions } from '~/datas/mockData';
-import { geoDistributionData, kpiData, userGrowthData } from '~/types/kpi';
-// CORRIGIDO: Importação dos dados de KPI do local correto (assumindo ~/datas/kpi.ts)
-
+import { dashboardService } from '~/services/admin/dashboard.service';
+import { transactionsService } from '~/services/admin/transactions.service';
+import type { DashboardStats, AdminTransactionSummary, UserGrowthPoint } from '~/types/admin';
 
 
 // New component to handle individual geographical distribution bars with animation
@@ -93,255 +89,185 @@ const GeoDistributionBar: React.FC<GeoDistributionBarProps> = ({ region, totalUs
 
 export default function AdminDashboard() {
   const [period, setPeriod] = useState('month');
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [growthData, setGrowthData] = useState<UserGrowthPoint[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<AdminTransactionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    Promise.all([
+      dashboardService.getStats(),
+      dashboardService.getUserGrowth({ groupBy: 'MONTH' }),
+      transactionsService.list({ size: 8, sort: 'createdAt,desc' }),
+    ])
+      .then(([s, g, t]) => {
+        setStats(s);
+        setGrowthData(g);
+        setRecentTransactions(t.content);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const chartGrowthData = growthData.map((p) => ({
+    month: new Date(p.date).toLocaleString('pt-BR', { month: 'short' }),
+    users: p.newUsers,
+  }));
+
+  const txChartData = recentTransactions.slice(0, 7).map((tx) => ({
+    month: new Date(tx.transactionDate).toLocaleString('pt-BR', { month: 'short' }),
+    receita: tx.type === 'INCOME' ? tx.amount : 0,
+    despesa: tx.type === 'EXPENSE' ? tx.amount : 0,
+  }));
+
+  // Map AdminTransactionSummary → TransactionItem-compatible shape
+  const mappedTransactions = recentTransactions.map((tx) => ({
+    id: tx.id,
+    description: tx.description,
+    category: tx.categoryName,
+    amount: tx.type === 'INCOME' ? tx.amount : -tx.amount,
+    date: new Date(tx.transactionDate).toLocaleDateString('pt-BR'),
+    type: tx.type === 'INCOME' ? 'income' : 'expense',
+  }));
+
+  const geoDistributionData: Array<{ region: string; users: number }> = [];
 
   return (
     <AdminLayout>
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 animate-fadeInUp">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-gray-200 px-6 py-4">
         <div>
-          <h1 className="text-2xl font-bold text-dark">Painel Administrativo</h1>
-          <p className="text-gray-600 mt-1">Visão geral do sistema e métricas principais</p>
+          <h1 className="text-[22px] font-semibold tracking-tight text-gray-900">Painel Administrativo</h1>
+          <p className="mt-0.5 text-[13px] text-gray-500">Visão geral do sistema e métricas principais</p>
         </div>
-
-        <div className="mt-4 md:mt-0 flex space-x-3">
-          <div className="relative">
-            <select
-              className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary cursor-pointer transition-all duration-300"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-            >
-              <option value="today">Hoje</option>
-              <option value="week">Esta Semana</option>
-              <option value="month">Este Mês</option>
-              <option value="quarter">Este Trimestre</option>
-              <option value="year">Este Ano</option>
-            </select>
-            <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
-          </div>
-
-          <button className="flex items-center justify-center px-4 py-2 bg-secondary text-white rounded-lg hover:bg-primary transition-colors duration-200">
-            <Bell size={16} className="mr-2" />
-            <span>Visualizar Alertas</span>
+        <div className="flex items-center gap-2">
+          <select
+            className="h-8 rounded-md border border-gray-200 bg-white px-3 text-[12px] text-gray-700 focus:outline-none focus:border-[#003cc3] cursor-pointer"
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+          >
+            <option value="today">Hoje</option>
+            <option value="week">Esta Semana</option>
+            <option value="month">Este Mês</option>
+            <option value="quarter">Este Trimestre</option>
+            <option value="year">Este Ano</option>
+          </select>
+          <button className="h-8 flex items-center gap-1.5 px-3 bg-[#00216b] hover:bg-[#003cc3] text-white text-[12px] font-medium rounded-md transition-colors">
+            <Bell size={13} />
+            Visualizar Alertas
           </button>
         </div>
       </div>
 
-      {/* Alertas de Segurança (se houver) */}
-      {kpiData.securityAlerts > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center animate-fadeInDown">
-          <ShieldAlert size={20} className="text-red-500 mr-3" />
-          <div>
-            <h3 className="font-medium text-red-700">Alertas de Segurança Ativos</h3>
-            <p className="text-red-600 text-sm">
-              Você tem {kpiData.securityAlerts} {kpiData.securityAlerts === 1 ? 'alerta' : 'alertas'} de segurança que {kpiData.securityAlerts === 1 ? 'requer' : 'requerem'} atenção.
-              <Link to="/dashboard/security" className="ml-2 underline text-secondary hover:text-primary transition-colors duration-200">Verificar</Link>
-            </p>
+      <div className="px-6 py-5 space-y-5">
+        {/* KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card title="Total de Usuários" value={loading ? 0 : (stats?.totalUsers ?? 0)} icon={Users} trend percentage={9} color="primary" isCurrency={false} />
+          <Card title="Novos Usuários (Mês)" value={loading ? 0 : (stats?.newUsersLast30Days ?? 0)} icon={UserPlus} trend percentage={12} color="success" isCurrency={false} />
+          <Card title="Transações (Mês)" value={loading ? 0 : (stats?.totalTransactions ?? 0)} icon={Activity} trend percentage={7} color="secondary" isCurrency={false} />
+          <Card title="Tickets de Suporte" value={loading ? 0 : (stats?.activeSessions ?? 0)} icon={Bell} trend percentage={-15} color="danger" isCurrency={false} />
+        </div>
+
+        {/* Estatísticas de Usuários */}
+        <div className="rounded-md border border-gray-200 bg-white">
+          <div className="border-b border-gray-100 px-4 py-3">
+            <h3 className="text-[13px] font-semibold text-gray-900">Estatísticas de Usuários Activos</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+            {[
+              { label: 'Diário (DAU)', val: stats?.activeUsers ?? 0 },
+              { label: 'Semanal (WAU)', val: stats?.kycApprovedUsers ?? 0 },
+              { label: 'Mensal (MAU)', val: stats?.verifiedUsers ?? 0 },
+            ].map(({ label, val }) => {
+              const total = stats?.totalUsers ?? 0;
+              const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+              return (
+                <div key={label} className="px-4 py-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-medium uppercase tracking-wider text-gray-500">{label}</span>
+                    <span className="text-[11px] font-medium text-gray-400">{pct}%</span>
+                  </div>
+                  <p className="font-mono text-[20px] font-semibold tabular-nums text-gray-900">{val.toLocaleString()}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
-      )}
 
-      {/* KPIs - Métricas Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-        <Card
-          title="Total de Usuários"
-          value={kpiData.totalUsers}
-          icon={Users}
-          trend={true}
-          percentage={9}
-          color="primary"
-          isCurrency={false}
-        />
-        <Card
-          title="Novos Usuários (Mês)"
-          value={kpiData.newUsers.month}
-          icon={UserPlus}
-          trend={true}
-          percentage={12}
-          color="success"
-          isCurrency={false}
-        />
-        <Card
-          title="Transações (Mês)"
-          value={kpiData.transactions.month}
-          icon={Activity}
-          trend={true}
-          percentage={7}
-          color="secondary"
-          isCurrency={false}
-        />
-        <Card
-          title="Tickets de Suporte"
-          value={kpiData.supportTickets}
-          icon={Bell}
-          trend={true}
-          percentage={-15}
-          color="danger"
-          isCurrency={false}
-        />
-      </div>
-
-      {/* Estatísticas de Usuários Ativos */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-8 p-6 transition-all duration-300 hover:shadow-md">
-        <h3 className="font-medium text-dark mb-4">Estatísticas de Usuários Ativos</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-blue-50 p-4 rounded-lg transition-all duration-300 hover:scale-[1.02] animate-fadeInUp">
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm text-blue-700">Diário (DAU)</h4>
-              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                {((kpiData.activeUsers.daily / kpiData.totalUsers) * 100).toFixed(1)}%
-              </span>
-            </div>
-            <p className="text-2xl font-bold text-blue-800 mt-2">{kpiData.activeUsers.daily.toLocaleString()}</p>
-          </div>
-
-          <div className="bg-green-50 p-4 rounded-lg transition-all duration-300 hover:scale-[1.02] animate-fadeInUp delay-100">
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm text-green-700">Semanal (WAU)</h4>
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                {((kpiData.activeUsers.weekly / kpiData.totalUsers) * 100).toFixed(1)}%
-              </span>
-            </div>
-            <p className="text-2xl font-bold text-green-800 mt-2">{kpiData.activeUsers.weekly.toLocaleString()}</p>
-          </div>
-
-          <div className="bg-purple-50 p-4 rounded-lg transition-all duration-300 hover:scale-[1.02] animate-fadeInUp delay-200">
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm text-purple-700">Mensal (MAU)</h4>
-              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                {((kpiData.activeUsers.monthly / kpiData.totalUsers) * 100).toFixed(1)}%
-              </span>
-            </div>
-            <p className="text-2xl font-bold text-purple-800 mt-2">{kpiData.activeUsers.monthly.toLocaleString()}</p>
-          </div>
+        {/* Gráficos */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ChartCard
+            title="Crescimento de Usuários"
+            chartData={chartGrowthData.length > 0 ? chartGrowthData : [{ month: '...', users: 0 }]}
+            dataKey="users"
+            color="#003cc3"
+            isCurrencyChart={false}
+          />
+          <ChartCard
+            title="Receitas vs Despesas"
+            chartData={txChartData.length > 0 ? txChartData : [{ month: '...', receita: 0, despesa: 0 }]}
+            dataKey={['receita', 'despesa']}
+            color="#00216b"
+            isCurrencyChart={true}
+          />
         </div>
-      </div>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <ChartCard
-          title="Crescimento de Usuários"
-          chartData={userGrowthData}
-          dataKey="users"
-          color="#003cc3" // Using secondary color
-          isCurrencyChart={false} // Explicitamente definido como false
-        />
-        <ChartCard
-          title="Receitas vs Despesas"
-          chartData={
-            Array.from(
-              new Set([...incomeData, ...expenseData].map(item => item.month))
-            ).map(month => {
-              const income = incomeData.find(item => item.month === month);
-              const expense = expenseData.find(item => item.month === month);
-              return {
-                month,
-                receita: income?.receita || 0,
-                despesa: expense?.despesa || 0
-              };
-            })
-          }
-          dataKey={['receita', 'despesa']}
-          color="#00216b" // Using primary color
-          isCurrencyChart={true} // Explicitamente definido como true
-        />
-      </div>
-
-      {/* Distribuição Geográfica */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-8 transition-all duration-300 hover:shadow-md">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex justify-between items-center">
-            <h3 className="font-medium text-dark">Distribuição Geográfica de Usuários</h3>
-            <div className="flex items-center">
-              <MapPin size={14} className="text-gray-400 mr-2" />
-              <span className="text-xs text-gray-500">Por região</span>
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          <div className="space-y-4">
-            {geoDistributionData.map((region, index) => (
-              <GeoDistributionBar
-                key={index}
-                region={region}
-                totalUsers={kpiData.totalUsers}
-                index={index}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Transações Recentes e Alertas */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Transações Recentes */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 lg:col-span-2 transition-all duration-300 hover:shadow-md">
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex justify-between items-center">
-              <h3 className="font-medium text-dark">Transações Recentes</h3>
-              <div className="flex space-x-2">
-                <button className="p-1 text-gray-500 hover:text-gray-700 transition-colors duration-200">
-                  <Filter size={16} />
-                </button>
-                <Link to="/dashboard/transaction" className="flex items-center text-secondary text-sm hover:text-primary transition-colors duration-200">
-                  Ver todas
-                  <ChevronRight size={16} className="ml-1" />
-                </Link>
+        {/* Distribuição Geográfica */}
+        {geoDistributionData.length > 0 && (
+          <div className="rounded-md border border-gray-200 bg-white">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+              <h3 className="text-[13px] font-semibold text-gray-900">Distribuição Geográfica</h3>
+              <div className="flex items-center gap-1 text-[11px] text-gray-400">
+                <MapPin size={11} />
+                Por região
               </div>
             </div>
+            <div className="p-4 space-y-3">
+              {geoDistributionData.map((region, i) => (
+                <GeoDistributionBar key={i} region={region} totalUsers={stats?.totalUsers ?? 0} index={i} />
+              ))}
+            </div>
           </div>
-          <div className="p-6">
-            {recentTransactions.map(transaction => (
-              <TransactionItem key={transaction.id} transaction={transaction} />
-            ))}
-          </div>
-        </div>
+        )}
 
-        {/* Alertas e Atividades */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md">
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex justify-between items-center">
-              <h3 className="font-medium text-dark">Alertas de Segurança</h3>
-              <Link to="/dashboard/security" className="flex items-center text-secondary text-sm hover:text-primary transition-colors duration-200">
-                Ver todos
-                <ChevronRight size={16} className="ml-1" />
+        {/* Transações + Alertas */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="rounded-md border border-gray-200 bg-white lg:col-span-2">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+              <h3 className="text-[13px] font-semibold text-gray-900">Transações Recentes</h3>
+              <Link to="/dashboard/transaction" className="flex items-center gap-0.5 text-[12px] text-[#003cc3] hover:text-[#00216b]">
+                Ver todas <ChevronRight size={13} />
               </Link>
             </div>
+            <div className="px-4 py-2">
+              {mappedTransactions.map(transaction => (
+                <TransactionItem key={transaction.id} transaction={transaction} />
+              ))}
+            </div>
           </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              <div className="flex p-3 bg-red-50 rounded-lg transition-all duration-300 hover:scale-[1.02]">
-                <div className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                  <ShieldAlert size={16} className="text-red-600" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-red-800">Múltiplas tentativas de login</p>
-                  <p className="text-xs text-red-600">5 tentativas falhas para conta ID #3892</p>
-                  <p className="text-xs text-gray-500 mt-1">Há 24 minutos</p>
-                </div>
-              </div>
 
-              <div className="flex p-3 bg-yellow-50 rounded-lg transition-all duration-300 hover:scale-[1.02]">
-                <div className="flex-shrink-0 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <Activity size={16} className="text-yellow-600" />
+          <div className="rounded-md border border-gray-200 bg-white">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+              <h3 className="text-[13px] font-semibold text-gray-900">Alertas de Segurança</h3>
+              <Link to="/dashboard/security" className="flex items-center gap-0.5 text-[12px] text-[#003cc3] hover:text-[#00216b]">
+                Ver todos <ChevronRight size={13} />
+              </Link>
+            </div>
+            <div className="p-3 space-y-2">
+              {[
+                { icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50', title: 'Múltiplas tentativas de login', sub: '5 tentativas falhas — conta #3892', time: 'Há 24 min' },
+                { icon: Activity, color: 'text-amber-600', bg: 'bg-amber-50', title: 'Transação suspeita', sub: 'Transferência de valor atípico', time: 'Há 2 horas' },
+                { icon: Info, color: 'text-blue-600', bg: 'bg-blue-50', title: 'Novo administrador criado', sub: 'Utilizador com privilégios elevados', time: 'Há 5 horas' },
+              ].map(({ icon: Icon, color, bg, title, sub, time }) => (
+                <div key={title} className={`flex gap-2.5 rounded-md ${bg} p-3`}>
+                  <Icon size={14} className={`mt-0.5 flex-shrink-0 ${color}`} />
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-medium text-gray-800 truncate">{title}</p>
+                    <p className="text-[11px] text-gray-500 truncate">{sub}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{time}</p>
+                  </div>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-yellow-800">Transação suspeita</p>
-                  <p className="text-xs text-yellow-600">Transferência grande de valor atípico</p>
-                  <p className="text-xs text-gray-500 mt-1">Há 2 horas</p>
-                </div>
-              </div>
-
-              <div className="flex p-3 bg-blue-50 rounded-lg transition-all duration-300 hover:scale-[1.02]">
-                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Info size={16} className="text-blue-600" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-blue-800">Novo usuário administrador</p>
-                  <p className="text-xs text-blue-600">Usuário com privilégios elevados criado</p>
-                  <p className="text-xs text-gray-500 mt-1">Há 5 horas</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>

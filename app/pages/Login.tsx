@@ -1,117 +1,84 @@
-// LoginScreen.tsx
-
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { InputField } from "~/components/login/InputField";
 import { LoginButton } from "~/components/login/LoginButton";
-import { Logo } from "~/components/login/Logo";
-import { Form, useActionData, useAuth, useNavigation } from "~/hook/authMock";
-import { AuthError } from "~/types/types";
-
-// Importar useNavigate não é mais necessário para redirecionamento direto aqui
-// import { useNavigate } from "@remix-run/react";
+import { useAuthStore } from "~/store/auth-store";
+import { useNavigate } from "@remix-run/react";
+import { toast } from "sonner";
 
 export default function LoginScreen() {
-  const { data: actionData } = useActionData<AuthError>();
-  const navigation = useNavigation();
-  useAuth(); // Obter o status de autenticação
-  // const navigate = useNavigate(); // Não é mais necessário para redirecionamento direto aqui
-  const isSubmitting = navigation.state === "submitting";
-  const [rememberMe, setRememberMe] = useState<boolean>(false);
-  const [emailError, setEmailError] = useState<string | undefined>(undefined);
-  const [passwordError, setPasswordError] = useState<string | undefined>(undefined);
-  const [globalError, setGlobalError] = useState<string | undefined>(undefined);
+  const { login, isLoading, error, clearError, isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
 
-  // REMOVIDO: O useEffect que fazia o redirecionamento para o dashboard
-  // se o usuário já estivesse autenticado. Esta lógica será centralizada no root.tsx.
-  /*
   useEffect(() => {
     if (isAuthenticated) {
-      console.log("LoginScreen: User already authenticated, navigating to dashboard.");
-      navigate('/dashboard');
+      navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, navigate]);
-  */
 
-  // Efeito para lidar com erros retornados pela action
   useEffect(() => {
-    setGlobalError(undefined);
-    setEmailError(undefined);
-    setPasswordError(undefined);
-
-    if (actionData?.error) {
-      setGlobalError(actionData.error);
-      if (actionData.error.toLowerCase().includes("email") || actionData.error.toLowerCase().includes("credenciais")) {
-        setEmailError("Email ou senha inválidos.");
-        setPasswordError("Email ou senha inválidos.");
-      } else if (actionData.error.toLowerCase().includes("senha")) {
-        setPasswordError("Senha inválida.");
-      } else {
-        setEmailError(undefined);
-        setPasswordError(undefined);
-      }
+    if (error) {
+      toast.error(error);
+      clearError();
     }
-  }, [actionData]);
+  }, [error, clearError]);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+    const password = (form.elements.namedItem("password") as HTMLInputElement).value;
+    await login(email, password);
+  }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row font-inter">
-      {/* Lado esquerdo - Banner */}
-      <div
-        className="hidden md:flex md:w-1/2 bg-gradient-to-br from-primary to-secondary items-center justify-center p-12 relative overflow-hidden"
-      >
-        {/* Adiciona formas abstratas para um visual mais dinâmico */}
-        <div className="absolute top-0 left-0 w-48 h-48 bg-light opacity-5 rounded-full -translate-x-1/2 -translate-y-1/2 animate-blob"></div>
-        <div className="absolute bottom-0 right-0 w-64 h-64 bg-light opacity-5 rounded-full translate-x-1/2 -translate-y-1/2 animate-blob animation-delay-2000"></div>
+    <div className="min-h-screen flex">
+      {/* Left — brand panel */}
+      <div className="hidden lg:flex lg:w-[420px] shrink-0 flex-col justify-between bg-[#00216b] p-10">
+        <div className="flex items-center gap-3">
+          <img src="/logotype.svg" alt="Wundu" className="h-10 w-auto" />
+          <div>
+            <div className="text-white font-semibold text-[15px] tracking-tight leading-none">Wundu</div>
+            <div className="text-white/40 font-mono text-[10px] uppercase tracking-widest mt-0.5">BackOffice</div>
+          </div>
+        </div>
 
-        <div className="max-w-md flex flex-col items-center text-center bg-dark/30 backdrop-blur-sm p-10 rounded-xl shadow-2xl border border-light/20 animate-fade-in-up">
-          <Logo />
-          <h2 className="text-4xl font-poppins font-extrabold mt-8 text-light leading-tight">
-            Sistema Administrativo
+        <div>
+          <p className="text-white/20 text-[11px] font-mono uppercase tracking-widest mb-4">Sistema Administrativo</p>
+          <h2 className="text-white text-[28px] font-semibold leading-snug tracking-tight">
+            Gestão interna<br />centralizada.
           </h2>
-          <p className="mt-4 text-light/90 text-lg font-light">
-            Acesse e gerencie as informações internas com segurança e eficiência.
+          <p className="mt-4 text-white/50 text-[13px] leading-relaxed">
+            Acesso restrito a administradores autorizados da plataforma Wundu.
           </p>
         </div>
+
+        <p className="text-white/20 text-[11px]">© {new Date().getFullYear()} Wundu · Todos os direitos reservados</p>
       </div>
 
-      {/* Lado direito - Formulário de login */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-light relative">
-        <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-2xl border border-light/50 animate-fade-in-right">
-          <div className="mb-8 text-center md:text-left">
-            <div className="md:hidden mb-6 flex justify-center">
-              <Logo small />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold font-poppins text-dark leading-tight">
-              Acesse o BackOffice
-            </h1>
-            <p className="mt-2 text-dark/80 text-lg">
-              Faça login para administrar conteúdos e dados internos.
-            </p>
+      {/* Right — form */}
+      <div className="flex flex-1 items-center justify-center bg-[#f8fafc] px-6 py-12">
+        <div className="w-full max-w-sm">
+          {/* Mobile brand */}
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <img src="/logotype.svg" alt="Wundu" className="h-7 w-auto" />
+            <span className="text-[#00216b] font-semibold text-[15px]">Wundu</span>
+            <span className="text-gray-400 font-mono text-[10px] uppercase tracking-wider">Admin</span>
           </div>
 
-          {/* Mensagem de erro global */}
-          {globalError && (
-            <div className={`mb-6 p-4 bg-tertiary text-white rounded-lg shadow-xl animate-fade-in-down animate-shake`}>
-              <div className="flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <p className="font-medium">{globalError}</p>
-              </div>
-            </div>
-          )}
+          <div className="mb-8">
+            <h1 className="text-[22px] font-semibold tracking-tight text-gray-900">Entrar no BackOffice</h1>
+            <p className="mt-1.5 text-[13px] text-gray-500">Introduza as suas credenciais para continuar.</p>
+          </div>
 
-          <Form method="post" className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <InputField
               id="email"
-              label="Email Corporativo"
+              label="Email corporativo"
               type="email"
               name="email"
               placeholder="seu@email.com"
               required
-              hasError={!!emailError}
-              errorMessage={emailError}
             />
-
             <InputField
               id="password"
               label="Senha"
@@ -119,49 +86,18 @@ export default function LoginScreen() {
               name="password"
               placeholder="••••••••"
               required
-              hasError={!!passwordError}
-              errorMessage={passwordError}
             />
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-5 w-5 text-secondary border-gray-300 rounded focus:ring-secondary transition-colors duration-200 ease-in-out cursor-pointer"
-                  checked={rememberMe}
-                  onChange={() => setRememberMe(!rememberMe)}
-                />
-                <label
-                  htmlFor="remember-me"
-                  className="ml-2 block text-base text-dark/80 font-medium cursor-pointer"
-                >
-                  Manter minha sessão ativa
-                </label>
-              </div>
-              <a
-                href="/recuperar-senha"
-                className="font-medium text-secondary hover:text-primary transition-colors duration-200 ease-in-out text-base"
-              >
-                Esqueceu sua senha?
-              </a>
+            <div className="pt-1">
+              <LoginButton isSubmitting={isLoading} />
             </div>
+          </form>
 
-            <LoginButton isSubmitting={isSubmitting} />
-          </Form>
-
-          <div className="mt-8 text-center text-sm text-dark/60 font-inter">
-            <p className="mt-2">
-              Problemas no acesso?{" "}
-              <a
-                href="/suporte"
-                className="font-medium text-secondary hover:text-primary transition-colors duration-200 ease-in-out"
-              >
-                Contate o suporte técnico
-              </a>
-            </p>
-          </div>
+          <p className="mt-8 text-center text-[12px] text-gray-400">
+            Problemas no acesso?{" "}
+            <a href="/suporte" className="text-[#003cc3] hover:text-[#00216b] transition-colors">
+              Suporte técnico
+            </a>
+          </p>
         </div>
       </div>
     </div>

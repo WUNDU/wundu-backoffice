@@ -1,25 +1,26 @@
 // ProfilePage.tsx
 import { Briefcase, Clock, Edit, MapPin, Phone, Save, XCircle, Lock, Key } from 'lucide-react';
 import React, { useState } from 'react';
-import { AdminLayout } from '~/components/dashboard/AdminLayout'; // Ajuste o caminho conforme necessário
-
-// Dados simulados do perfil do usuário
-const mockUserProfile = {
-  id: 'user-123',
-  name: 'Administrador Principal',
-  email: 'admin@example.com',
-  role: 'Administrador',
-  phone: '+244 912 345 678',
-  address: 'Rua da Liberdade, 123, Luanda',
-  department: 'TI e Operações',
-  lastLogin: '2025-05-22 10:35',
-  profilePicture: 'https://placehold.co/100x100/003cc3/ffffff?text=AD' // Placeholder com cores do tema
-};
+import { AdminLayout } from '~/components/dashboard/AdminLayout';
+import { useAuthStore } from '~/store/auth-store';
 
 export default function ProfilePage() {
+  const { user } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState(mockUserProfile);
-  const [formData, setFormData] = useState(mockUserProfile); // Estado para o formulário de edição
+
+  const profile = {
+    id: user?.id ?? '',
+    name: user?.name ?? '',
+    email: user?.email ?? '',
+    role: 'Administrador',
+    phone: '',
+    address: '',
+    department: 'TI e Operações',
+    lastLogin: '',
+    profilePicture: `https://placehold.co/100x100/003cc3/ffffff?text=${(user?.name ?? 'AD').slice(0, 2).toUpperCase()}`,
+  };
+
+  const [formData, setFormData] = useState(profile);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -27,30 +28,28 @@ export default function ProfilePage() {
   };
 
   const handleSave = () => {
-    // Simular salvamento de dados
-    setProfile(formData);
     setIsEditing(false);
     alert('Perfil atualizado com sucesso!');
   };
 
   const handleCancel = () => {
-    setFormData(profile); // Reverte para os dados originais
+    setFormData(profile);
     setIsEditing(false);
   };
 
   return (
     <AdminLayout>
-      <div className="animate-fadeInUp">
-        <h1 className="text-2xl font-bold text-dark mb-6">Meu Perfil</h1>
-        <p className="text-gray-600 mb-8">Visualize e edite as informações do seu perfil de usuário.</p>
+      <div className="px-6 py-5 space-y-5">
+        <h1 className="text-[22px] font-semibold tracking-tight text-gray-900">Meu Perfil</h1>
+        <p className="text-[13px] text-gray-500">Visualize e edite as informações do seu perfil de usuário.</p>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+        <div className="rounded-md border border-gray-200 bg-white p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-dark">Informações Pessoais</h2>
+            <h2 className="text-[15px] font-semibold text-gray-900">Informações Pessoais</h2>
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center px-4 py-2 bg-secondary text-white rounded-lg hover:bg-primary transition-colors duration-200"
+                className="flex items-center px-4 py-2 bg-[#00216b] text-white rounded-lg hover:bg-[#003cc3] transition-colors duration-200"
               >
                 <Edit size={16} className="mr-2" />
                 Editar Perfil
@@ -59,7 +58,7 @@ export default function ProfilePage() {
               <div className="flex space-x-2">
                 <button
                   onClick={handleSave}
-                  className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-secondary transition-colors duration-200"
+                  className="flex items-center px-4 py-2 bg-[#00216b] text-white rounded-lg hover:bg-[#003cc3] transition-colors duration-200"
                 >
                   <Save size={16} className="mr-2" />
                   Salvar
@@ -80,7 +79,7 @@ export default function ProfilePage() {
               <img
                 src={profile.profilePicture}
                 alt="Foto de Perfil"
-                className="w-24 h-24 rounded-full object-cover border-2 border-primary shadow-md"
+                className="w-24 h-24 rounded-full object-cover border-2 border-[#00216b] shadow-md"
               />
             </div>
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 w-full">
@@ -94,10 +93,10 @@ export default function ProfilePage() {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-[#003cc3] focus:ring-[#003cc3]/20"
                   />
                 ) : (
-                  <p className="text-dark font-medium text-lg">{profile.name}</p>
+                  <p className="text-gray-900 font-medium text-lg">{profile.name}</p>
                 )}
               </div>
               {/* Email */}
@@ -110,16 +109,16 @@ export default function ProfilePage() {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-[#003cc3] focus:ring-[#003cc3]/20"
                   />
                 ) : (
-                  <p className="text-dark font-medium text-lg">{profile.email}</p>
+                  <p className="text-gray-900 font-medium text-lg">{profile.email}</p>
                 )}
               </div>
               {/* Papel */}
               <div>
                 <label htmlFor="profile-role" className="block text-sm font-medium text-gray-700 mb-1">Papel</label>
-                <p id="profile-role" className="text-dark font-medium text-lg flex items-center">
+                <p id="profile-role" className="text-gray-900 font-medium text-lg flex items-center">
                   <Briefcase size={16} className="mr-2 text-gray-500" />
                   {profile.role}
                 </p>
@@ -134,10 +133,10 @@ export default function ProfilePage() {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-[#003cc3] focus:ring-[#003cc3]/20"
                   />
                 ) : (
-                  <p className="text-dark font-medium text-lg flex items-center">
+                  <p className="text-gray-900 font-medium text-lg flex items-center">
                     <Phone size={16} className="mr-2 text-gray-500" />
                     {profile.phone}
                   </p>
@@ -153,10 +152,10 @@ export default function ProfilePage() {
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-[#003cc3] focus:ring-[#003cc3]/20"
                   />
                 ) : (
-                  <p className="text-dark font-medium text-lg flex items-center">
+                  <p className="text-gray-900 font-medium text-lg flex items-center">
                     <MapPin size={16} className="mr-2 text-gray-500" />
                     {profile.address}
                   </p>
@@ -165,7 +164,7 @@ export default function ProfilePage() {
               {/* Último Login */}
               <div className="md:col-span-2">
                 <label htmlFor="profile-last-login" className="block text-sm font-medium text-gray-700 mb-1">Último Login</label>
-                <p id="profile-last-login" className="text-dark font-medium text-lg flex items-center">
+                <p id="profile-last-login" className="text-gray-900 font-medium text-lg flex items-center">
                   <Clock size={16} className="mr-2 text-gray-500" />
                   {profile.lastLogin}
                 </p>
@@ -175,18 +174,18 @@ export default function ProfilePage() {
         </div>
 
         {/* Seção de Segurança da Conta */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-semibold text-dark mb-4">Segurança da Conta</h2>
+        <div className="rounded-md border border-gray-200 bg-white p-6">
+          <h2 className="text-[15px] font-semibold text-gray-900 mb-4">Segurança da Conta</h2>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
               <div className="flex items-center">
                 <Lock size={20} className="text-gray-600 mr-3" />
                 <div>
-                  <p className="font-medium text-dark">Alterar Senha</p>
+                  <p className="font-medium text-gray-900">Alterar Senha</p>
                   <p className="text-sm text-gray-600">Recomendado alterar sua senha regularmente.</p>
                 </div>
               </div>
-              <button className="px-4 py-2 bg-tertiary text-white rounded-lg hover:bg-orange-600 transition-colors duration-200">
+              <button className="px-4 py-2 bg-[#00216b] text-white rounded-lg hover:bg-[#003cc3] transition-colors duration-200">
                 Alterar
               </button>
             </div>
@@ -194,11 +193,11 @@ export default function ProfilePage() {
               <div className="flex items-center">
                 <Key size={20} className="text-gray-600 mr-3" />
                 <div>
-                  <p className="font-medium text-dark">Autenticação de Dois Fatores (2FA)</p>
+                  <p className="font-medium text-gray-900">Autenticação de Dois Fatores (2FA)</p>
                   <p className="text-sm text-gray-600">Aumente a segurança da sua conta com 2FA.</p>
                 </div>
               </div>
-              <button className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-primary transition-colors duration-200">
+              <button className="px-4 py-2 bg-[#00216b] text-white rounded-lg hover:bg-[#003cc3] transition-colors duration-200">
                 Configurar
               </button>
             </div>

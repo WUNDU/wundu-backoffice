@@ -1,231 +1,215 @@
-import { useState } from 'react';
-import { Link, useLocation, useNavigate } from '@remix-run/react'; // Importar useNavigate
+import { Link, useLocation } from '@remix-run/react';
 import {
-  Home,
-  Wallet,
-  BarChart3,
-  LogOut,
-  Menu,
-  X,
-  Bell,
-  User,
-  ChevronDown,
-  DollarSign,
-  ShieldAlert,
-  Users as UsersIcon,
-  LifeBuoy,
-  User as UserProfileIcon // Renomeado para o ícone de perfil
+  Home, ArrowLeftRight, TrendingUp, TrendingDown, BarChart3,
+  ShieldAlert, Users, Bell, Tag, Target, Flag, Server, ScrollText,
+  LogOut, Menu, X,
 } from 'lucide-react';
-import { DashboardLayoutProps, MenuItem } from '~/types/types'; // Ajuste o caminho conforme necessário
-import { SidebarLink } from './SidebarLink'; // Ajuste o caminho conforme necessário
-import { logoutUser, useAuth } from '~/hook/authMock';
-// Importar useAuth (ajuste o caminho se necessário)
+import { DashboardLayoutProps } from '~/types/types';
+import { useAuthStore } from '~/store/auth-store';
+import { useState } from 'react';
 
+type NavItem = { to: string; icon: React.ElementType; label: string };
+type NavGroup = { label: string; items: NavItem[] };
+
+const navGroups: NavGroup[] = [
+  {
+    label: 'Visão Geral',
+    items: [
+      { to: '/dashboard', icon: Home, label: 'Painel Principal' },
+    ],
+  },
+  {
+    label: 'Financeiro',
+    items: [
+      { to: '/dashboard/transaction', icon: ArrowLeftRight, label: 'Transações' },
+      { to: '/dashboard/receipt', icon: TrendingUp, label: 'Receitas' },
+      { to: '/dashboard/expense', icon: TrendingDown, label: 'Despesas' },
+      { to: '/dashboard/reports', icon: BarChart3, label: 'Relatórios' },
+    ],
+  },
+  {
+    label: 'Utilizadores',
+    items: [
+      { to: '/dashboard/access-management', icon: Users, label: 'Gestão de Acesso' },
+      { to: '/dashboard/security', icon: ShieldAlert, label: 'Segurança' },
+      { to: '/dashboard/tickets', icon: Bell, label: 'Notificações' },
+    ],
+  },
+  {
+    label: 'Plataforma',
+    items: [
+      { to: '/dashboard/categories', icon: Tag, label: 'Categorias' },
+      { to: '/dashboard/goals', icon: Target, label: 'Metas' },
+      { to: '/dashboard/feature-flags', icon: Flag, label: 'Feature Flags' },
+      { to: '/dashboard/audit', icon: ScrollText, label: 'Audit Log' },
+      { to: '/dashboard/system', icon: Server, label: 'Sistema' },
+    ],
+  },
+];
+
+const PAGE_TITLES: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/dashboard/transaction': 'Transações',
+  '/dashboard/receipt': 'Receitas',
+  '/dashboard/expense': 'Despesas',
+  '/dashboard/reports': 'Relatórios',
+  '/dashboard/access-management': 'Gestão de Acesso',
+  '/dashboard/security': 'Segurança',
+  '/dashboard/tickets': 'Notificações',
+  '/dashboard/categories': 'Categorias',
+  '/dashboard/goals': 'Metas',
+  '/dashboard/feature-flags': 'Feature Flags',
+  '/dashboard/audit': 'Audit Log',
+  '/dashboard/system': 'Sistema',
+  '/dashboard/profile': 'Meu Perfil',
+};
+
+function SidebarContent({ onClose }: { onClose: () => void }) {
+  const location = useLocation();
+  const { logout, user } = useAuthStore();
+
+  const isActive = (to: string) =>
+    to === '/dashboard' ? location.pathname === to : location.pathname.startsWith(to);
+
+  const initials = user?.name
+    ? user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+    : 'A';
+
+  return (
+    <div className="h-full flex flex-col bg-white border-r border-gray-200">
+      {/* Logo */}
+      <div className="flex items-center justify-between h-14 px-4 border-b border-gray-200 shrink-0">
+        <div className="flex items-center gap-2">
+          <img src="/logotype.svg" alt="Wundu" className="h-7 w-auto" />
+          <span className="text-[15px] font-semibold tracking-tight text-gray-900">Wundu</span>
+          <span className="text-[10px] font-mono uppercase tracking-widest text-gray-400">admin</span>
+        </div>
+        <button className="md:hidden text-gray-400 hover:text-gray-600" onClick={onClose}>
+          <X size={18} />
+        </button>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto px-2 py-3">
+        {navGroups.map((group) => (
+          <div key={group.label} className="mb-4">
+            <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              {group.label}
+            </div>
+            <ul className="space-y-0.5">
+              {group.items.map((item) => {
+                const active = isActive(item.to);
+                const Icon = item.icon;
+                return (
+                  <li key={item.to}>
+                    <Link
+                      to={item.to}
+                      onClick={onClose}
+                      className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors ${
+                        active
+                          ? 'bg-[#00216b]/[0.08] text-[#00216b] font-medium'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`}
+                    >
+                      <Icon size={15} className="shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
+
+      {/* User footer */}
+      <div className="border-t border-gray-200 p-3 shrink-0">
+        <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[11px] font-semibold shrink-0">
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="truncate text-[12px] font-medium text-gray-900">{user?.name ?? 'Administrador'}</div>
+            <div className="truncate text-[10px] text-gray-400">{user?.email ?? ''}</div>
+          </div>
+          <button
+            onClick={() => logout()}
+            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+            title="Encerrar sessão"
+          >
+            <LogOut size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function AdminLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
-  const navigate = useNavigate(); // Obter a função navigate
-  const { setIsAuthenticated } = useAuth(); // Obter a função setIsAuthenticated do contexto AuthContext
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-  const [userMenuOpen, setUserMenuOpen] = useState<boolean>(false);
-  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const toggleSubmenu = (key: string) => {
-    setOpenSubmenus(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
-  };
-
-  // Simplified menu items based on MVP and PDF structure
-  const menuItems: MenuItem[] = [
-    {
-      to: '/dashboard',
-      icon: Home,
-      label: 'Painel Principal'
-    },
-    {
-      to: '#', // Parent link for financial management with submenus
-      icon: Wallet,
-      label: 'Gestão Financeira',
-      submenuKey: 'finance',
-      submenuItems: [
-        { to: '/dashboard/transaction', label: 'Transações', isActive: location.pathname.startsWith('/dashboard/transaction') },
-        { to: '/dashboard/receipt', label: 'Receitas', isActive: location.pathname.startsWith('/dashboard/receipt') },
-        { to: '/dashboard/expense', label: 'Despesas', isActive: location.pathname.startsWith('/dashboard/expense') },
-      ]
-    },
-    {
-      to: '/dashboard/reports',
-      icon: BarChart3,
-      label: 'Relatórios e Análises'
-    },
-    {
-      to: '/dashboard/security',
-      icon: ShieldAlert,
-      label: 'Painel de Segurança'
-    },
-    {
-      to: '/dashboard/access-management',
-      icon: UsersIcon,
-      label: 'Gerenciamento de Acesso'
-    },
-    {
-      to: '/dashboard/tickets',
-      icon: LifeBuoy,
-      label: 'Gerenciamento de Tickets'
-    },
-    {
-      to: '/dashboard/profile', // Nova rota para Meu Perfil
-      icon: UserProfileIcon, // Ícone para Meu Perfil
-      label: 'Meu Perfil'
-    },
-    // The 'Configurações' (Settings) menu item has been removed as requested.
-  ];
+  const currentTitle = PAGE_TITLES[location.pathname] ?? 'Wundu Admin';
+  const { user } = useAuthStore();
+  const initials = user?.name
+    ? user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+    : 'A';
 
   return (
-    <div className="flex h-screen bg-light font-inter"> {/* Changed bg-gray-50 to bg-light */}
-      {/* Sidebar overlay for mobile */}
-      <div className={`
-        fixed inset-0 z-40 md:hidden bg-dark bg-opacity-50 transition-opacity duration-300
-        ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-      `}
-        onClick={() => setSidebarOpen(false)}
-        role="button"
-        tabIndex={0}
-        onKeyPress={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            setSidebarOpen(false);
-          }
-        }}
-      ></div>
+    <div className="flex h-screen bg-[#f8fafc] font-inter">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      {/* Sidebar */}
-      <aside className={`
-        fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-gray-200
-        transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:z-auto
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="h-full flex flex-col">
-          {/* Logo */}
-          <div className="flex items-center justify-between px-6 h-16 border-b border-gray-200">
-            <div className="flex items-center">
-              <div className="rounded-lg bg-primary p-1"> {/* Using primary color */}
-                <DollarSign size={24} className="text-white" />
-              </div>
-              <span className="ml-2 font-bold text-xl text-dark"> {/* Using dark color */}
-                Admin<span className="text-accent">Panel</span> {/* Using accent color */}
-              </span>
-            </div>
-            <button
-              className="md:hidden text-gray-500 hover:text-gray-700"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X size={24} />
-            </button>
-          </div>
-
-          {/* Nav Links */}
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            {menuItems.map((item) => (
-              <SidebarLink
-                key={item.to + item.label}
-                to={item.to}
-                icon={item.icon}
-                label={item.label}
-                isActive={
-                  item.submenuItems
-                    ? item.submenuItems.some(subItem => location.pathname.startsWith(subItem.to))
-                    : location.pathname === item.to || (item.to === '/dashboard' && location.pathname === '/') // Handle root dashboard route
-                }
-                isSubmenuOpen={item.submenuKey ? openSubmenus[item.submenuKey] : false}
-                toggleSubmenu={() => item.submenuKey && toggleSubmenu(item.submenuKey)}
-                submenuItems={item.submenuItems}
-              />
-            ))}
-          </nav>
-
-          {/* Logout Button */}
-          <div className="p-4 border-t border-gray-200">
-            <button // Changed from Link to button
-              onClick={() => logoutUser(navigate, setIsAuthenticated)} // Passar a função navigate e setIsAuthenticated
-              className="flex items-center px-4 py-3 text-red-600 rounded-lg hover:bg-red-50 transition-colors duration-200 w-full text-left"
-            >
-              <LogOut size={20} />
-              <span className="ml-3 font-medium text-base">Encerrar Sessão</span> {/* Adjusted font size */}
-            </button>
-          </div>
-        </div>
+      {/* Sidebar desktop */}
+      <aside className="hidden md:flex w-60 shrink-0 flex-col">
+        <SidebarContent onClose={() => setSidebarOpen(false)} />
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Nav */}
-        <header className="bg-white border-b border-gray-200 h-16">
-          <div className="flex items-center justify-between px-4 md:px-6 h-full">
-            <div className="flex items-center">
-              <button
-                className="text-gray-500 md:hidden"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <Menu size={24} />
-              </button>
-              <h1 className="hidden md:block ml-4 text-xl font-semibold text-dark"> {/* Using dark color */}
-                {/* Dynamic title based on current path */}
-                {location.pathname === '/dashboard' && 'Painel Principal - Visão Geral'}
-                {location.pathname.startsWith('/dashboard/transaction') && 'Gestão Financeira - Transações'}
-                {location.pathname.startsWith('/dashboard/receipt') && 'Gestão Financeira - Receitas'}
-                {location.pathname.startsWith('/dashboard/expense') && 'Gestão Financeira - Despesas'}
-                {location.pathname === '/dashboard/reports' && 'Relatórios e Análises'}
-                {location.pathname === '/dashboard/security' && 'Painel de Segurança'}
-                {location.pathname === '/dashboard/access-management' && 'Gerenciamento de Acesso'}
-                {location.pathname === '/dashboard/tickets' && 'Gerenciamento de Tickets'}
-                {location.pathname === '/dashboard/profile' && 'Meu Perfil'}
-              </h1>
-            </div>
+      {/* Sidebar mobile */}
+      {sidebarOpen && (
+        <aside className="fixed inset-y-0 left-0 z-50 w-60 flex flex-col md:hidden shadow-xl">
+          <SidebarContent onClose={() => setSidebarOpen(false)} />
+        </aside>
+      )}
 
-            <div className="flex items-center space-x-3">
-              {/* Notifications */}
-              <div className="relative">
-                <button className="p-2 text-gray-500 rounded-full hover:bg-gray-100">
-                  <Bell size={20} />
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-                </button>
+      {/* Main */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Header */}
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-gray-200 bg-white/80 backdrop-blur px-4 shrink-0">
+          <button
+            className="md:hidden text-gray-500 hover:text-gray-700"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu size={20} />
+          </button>
+
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-1.5 text-[13px] min-w-0">
+            <span className="font-medium text-gray-900">Wundu</span>
+            <span className="text-gray-300">/</span>
+            <span className="font-medium text-gray-600 truncate">{currentTitle}</span>
+          </nav>
+
+          <div className="ml-auto flex items-center gap-1.5">
+            <button className="relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
+              <Bell size={16} />
+              <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-500" />
+            </button>
+            <Link to="/dashboard/profile">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[11px] font-semibold">
+                {initials}
               </div>
-
-              {/* User menu */}
-              <div className="relative">
-                <button
-                  className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100"
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                >
-                  <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center"> {/* Using secondary color */}
-                    <User size={16} className="text-white" />
-                  </div>
-                  <span className="hidden md:inline-block text-sm font-medium text-dark">Administrador</span> {/* Using dark color */}
-                  <ChevronDown size={16} className={`hidden md:block transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Dropdown menu */}
-                {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 py-2 bg-white rounded-md shadow-lg z-50 border border-gray-200">
-                    <Link to="/dashboard/profile" className="block px-4 py-2 text-sm text-dark hover:bg-gray-100"> {/* Using dark color */}
-                      Meu Perfil
-                    </Link>
-                    {/* Removed link to /admin/configuracoes from user menu */}
-                    <div className="border-t border-gray-200 my-1"></div>
-                    <button onClick={() => logoutUser(navigate, setIsAuthenticated)} className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left">
-                      Encerrar Sessão
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            </Link>
           </div>
         </header>
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-auto p-4 md:p-6 bg-light"> {/* Changed bg-gray-50 to bg-light */}
+        {/* Content */}
+        <main className="flex-1 overflow-auto">
           {children}
         </main>
       </div>

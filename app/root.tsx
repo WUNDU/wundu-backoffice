@@ -8,11 +8,11 @@ import {
   useNavigate,
 } from "@remix-run/react";
 import type { LinksFunction } from "@remix-run/node";
-import React, { useEffect, useContext } from "react";
+import React, { useEffect } from "react";
 
 import "./tailwind.css";
-import { AuthContext, RemixMocksProvider } from "./hook/remixMocksProvider";
-import { checkAuthCookie } from "./hook/authMock";
+import { Toaster } from "sonner";
+import { useAuthStore } from "~/store/auth-store";
 
 export const links: LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -33,17 +33,16 @@ export const links: LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
       </head>
-      <body>
-        <RemixMocksProvider>
-          {children}
-        </RemixMocksProvider>
+      <body suppressHydrationWarning>
+        {children}
+        <Toaster position="top-right" richColors />
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -54,33 +53,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated, isLoading, initializeAuth } = useAuthStore();
 
-  // Este useEffect é responsável por gerir os redirecionamentos com base no estado de autenticação.
   useEffect(() => {
+    // Rehydrate persisted user state from localStorage, then run silent refresh
+    useAuthStore.persist.rehydrate();
+    initializeAuth();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) return;
+
     const currentPath = location.pathname;
-    // Verifica diretamente o status de autenticação do "cookie" (localStorage) para a decisão mais recente.
-    const isAuthFromCookie = checkAuthCookie();
 
-    console.log(`[root.tsx] Effect running: path=${currentPath}, isAuthenticated (context)=${isAuthenticated}, isAuthFromCookie=${isAuthFromCookie}`);
-
-    // Cenário 1: O utilizador está autenticado (seja pelo contexto ou pelo cookie)
-    if (isAuthenticated || isAuthFromCookie) {
-      // Se ele está na página de login ou na raiz, redireciona para o dashboard
-      if (currentPath === '/login' || currentPath === '/') {
-        console.log(`[root.tsx] Authenticated, redirecting from ${currentPath} to /dashboard`);
-        navigate('/dashboard', { replace: true }); // Usar replace para evitar adicionar ao histórico
+    if (isAuthenticated) {
+      if (currentPath === "/" || currentPath === "/login") {
+        navigate("/dashboard", { replace: true });
+      }
+    } else {
+      if (currentPath.startsWith("/dashboard")) {
+        navigate("/login", { replace: true });
       }
     }
-    // Cenário 2: O utilizador NÃO está autenticado (nem pelo contexto nem pelo cookie)
-    else {
-      // Se ele está a tentar aceder a qualquer rota do dashboard, redireciona para o login
-      if (currentPath.startsWith('/dashboard')) {
-        console.log(`[root.tsx] Not authenticated, redirecting from ${currentPath} to /login`);
-        navigate('/login', { replace: true }); // Usar replace para evitar adicionar ao histórico
-      }
-    }
-  }, [isAuthenticated, location.pathname, navigate]); // Dependências para re-executar o efeito
+  }, [isAuthenticated, isLoading, location.pathname, navigate]);
 
   return <Outlet />;
 }
