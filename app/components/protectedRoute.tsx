@@ -1,5 +1,5 @@
 // ProtectedRoute.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from '@remix-run/react';
 import { useAuthStore } from '~/store/auth-store';
 
@@ -10,26 +10,20 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuthStore();
   const location = useLocation();
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    if (isLoading) return; // Wait for silent refresh to complete
+    if (isLoading) return;
     if (!isAuthenticated) {
       window.location.href = '/login';
     }
+    setChecked(true);
   }, [isAuthenticated, isLoading, location.pathname]);
 
-  // While auth is initializing, show nothing (root.tsx handles the refresh)
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-8 h-8 border-4 border-[#003cc3] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  // Block all children until auth resolves — prevents API calls before init completes
+  if (isLoading || !checked) return null;
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return <>{children}</>;
 };

@@ -56,8 +56,6 @@ export default function App() {
   const { isAuthenticated, isLoading, initializeAuth } = useAuthStore();
 
   useEffect(() => {
-    // Rehydrate persisted user state from localStorage, then run silent refresh
-    useAuthStore.persist.rehydrate();
     initializeAuth();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

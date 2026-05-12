@@ -4,6 +4,10 @@ import { authService } from "~/services/auth.service";
 import { setAuthHandlers } from "~/lib/api";
 import type { AdminProfile } from "~/services/auth.service";
 
+// Shared init promise — prevents initializeAuth and refreshToken from racing
+// over the same single-use refresh token (token rotates on each use)
+let _initPromise: Promise<void> | null = null;
+
 interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
@@ -56,17 +60,32 @@ export const useAuthStore = create<AuthState>()(
 
       // Silent refresh on startup — if refresh cookie is still valid, backend issues new accessToken
       initializeAuth: async () => {
+        // Deduplicate: if already running, return the same promise (prevents double-call on StrictMode)
+        if (_initPromise) return _initPromise;
         set({ isLoading: true });
-        try {
-          const { accessToken } = await authService.refresh();
-          set({ token: accessToken });
-          await get().checkAuthStatus();
-        } catch {
-          set({ token: null, isAuthenticated: false, isLoading: false, user: null });
-        }
+        _initPromise = (async () => {
+          try {
+            const { accessToken } = await authService.refresh();
+            set({ token: accessToken });
+            await get().checkAuthStatus();
+          } catch {
+            set({ token: null, isAuthenticated: false, isLoading: false, user: null });
+          } finally {
+            _initPromise = null;
+          }
+        })();
+        return _initPromise;
       },
 
+      // Called by axios interceptor on 401 — waits for initializeAuth if in progress
+      // to avoid competing for the same single-use refresh token
       refreshToken: async () => {
+        if (_initPromise) {
+          await _initPromise;
+          const { token } = get();
+          if (token) return token;
+          throw new Error("Session expired");
+        }
         const { accessToken } = await authService.refresh();
         set({ token: accessToken, isAuthenticated: true });
         return accessToken;
@@ -131,8 +150,13 @@ export const useAuthStore = create<AuthState>()(
       // Token stays in-memory only — never persisted (XSS protection)
       // User profile persisted for instant display while silent refresh runs
       partialize: (state) => ({ user: state.user }),
-      // Skip auto-hydration to prevent SSR/client mismatch — rehydrate manually in useEffect
-      skipHydration: true,
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // Token is never persisted — ensure it starts null after rehydration
+          state.token = null;
+          state.isAuthenticated = false;
+        }
+      },
     }
   )
 );
