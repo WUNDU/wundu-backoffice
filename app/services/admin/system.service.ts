@@ -15,8 +15,4 @@ export const systemService = {
   getMetrics() {
     return api.get<SystemMetrics>(`${BASE}/metrics`).then((r) => r.data);
   },
-
-  clearCache() {
-    return api.post<void>(`${BASE}/cache/clear`).then((r) => r.data);
-  },
 };

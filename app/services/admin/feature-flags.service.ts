@@ -1,7 +1,7 @@
 import { api } from "~/lib/api";
 import type { FeatureFlag, UpdateFlagRequest } from "~/types/admin";
 
-const BASE = "/admin/feature-flags";
+const BASE = "/admin/config";
 
 export const featureFlagsService = {
   list() {
@@ -9,6 +9,6 @@ export const featureFlagsService = {
   },
 
   update(key: string, body: UpdateFlagRequest) {
-    return api.put<FeatureFlag>(`${BASE}/${key}`, body).then((r) => r.data);
+    return api.patch<FeatureFlag>(`${BASE}/${key}`, body).then((r) => r.data);
   },
 };

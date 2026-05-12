@@ -19,7 +19,7 @@ export const categoriesService = {
   },
 
   update(categoryId: string, body: UpdateCategoryRequest) {
-    return api.put<AdminCategory>(`${BASE}/${categoryId}`, body).then((r) => r.data);
+    return api.patch<AdminCategory>(`${BASE}/${categoryId}`, body).then((r) => r.data);
   },
 
   delete(categoryId: string) {

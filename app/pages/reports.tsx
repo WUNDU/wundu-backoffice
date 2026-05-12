@@ -17,6 +17,16 @@ import { dashboardService } from '~/services/admin/dashboard.service';
 import { transactionsService } from '~/services/admin/transactions.service';
 import type { DashboardStats, AdminTransactionSummary } from '~/types/admin';
 
+function parseJavaDate(d: unknown): Date | null {
+  if (d == null) return null;
+  if (Array.isArray(d)) {
+    const [y, mo, day, h = 0, min = 0, s = 0] = d as number[];
+    return new Date(y, mo - 1, day, h, min, s);
+  }
+  const dt = new Date(d as string);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+
 /**
  * ReportsPage Component
  * This page provides a comprehensive overview of financial reports and analytics
@@ -32,28 +42,55 @@ const ReportsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
+    const params: Parameters<typeof transactionsService.list>[0] = { size: 50, page: 0, sort: 'createdAt,desc' };
+    if (selectedPeriod === 'custom' && startDate) params.from = startDate;
+    if (selectedPeriod === 'custom' && endDate) params.to = endDate;
+
     Promise.all([
       dashboardService.getStats(),
-      transactionsService.list({ size: 200, sort: 'transactionDate,asc' }),
+      transactionsService.list({ ...params, type: 'INCOME' }),
+      transactionsService.list({ ...params, type: 'EXPENSE' }),
     ])
-      .then(([s, t]) => { setStats(s); setTransactions(t.content); })
+      .then(([s, income, expense]) => {
+        setStats(s);
+        setTransactions([...income.content, ...expense.content]);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedPeriod, startDate, endDate]);
 
   const filteredAnnualFinancialPerformance = useMemo(() => {
+    const now = new Date();
+    let filtered = transactions;
+
+    if (selectedPeriod === 'last-3-months') {
+      const cutoff = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      filtered = transactions.filter(tx => {
+        const d = parseJavaDate(tx.transactionDate);
+        return d != null && d >= cutoff;
+      });
+    } else if (selectedPeriod === 'last-year') {
+      const cutoff = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+      filtered = transactions.filter(tx => {
+        const d = parseJavaDate(tx.transactionDate);
+        return d != null && d >= cutoff;
+      });
+    }
+
     const monthly: Record<string, { month: string; receita: number; despesa: number; net: number }> = {};
-    transactions.forEach(tx => {
-      const m = new Date(tx.transactionDate).toLocaleString('pt-BR', { month: 'short' });
-      if (!monthly[m]) monthly[m] = { month: m, receita: 0, despesa: 0, net: 0 };
-      if (tx.type === 'INCOME') monthly[m].receita += tx.amount;
-      else monthly[m].despesa += tx.amount;
-      monthly[m].net = monthly[m].receita - monthly[m].despesa;
+    filtered.forEach(tx => {
+      const d = parseJavaDate(tx.transactionDate);
+      if (!d) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
+      if (!monthly[key]) monthly[key] = { month: label, receita: 0, despesa: 0, net: 0 };
+      if (tx.type === 'INCOME') monthly[key].receita += tx.amount;
+      else monthly[key].despesa += tx.amount;
+      monthly[key].net = monthly[key].receita - monthly[key].despesa;
     });
-    let data = Object.values(monthly);
-    if (selectedPeriod === 'last-3-months') data = data.slice(-3);
-    return data;
-  }, [transactions, selectedPeriod, startDate, endDate]);
+    return Object.keys(monthly).sort().map(k => monthly[k]);
+  }, [transactions, selectedPeriod]);
 
   const totalReportIncome = useMemo(() => filteredAnnualFinancialPerformance.reduce((s, i) => s + (i.receita || 0), 0), [filteredAnnualFinancialPerformance]);
   const totalReportExpenses = useMemo(() => filteredAnnualFinancialPerformance.reduce((s, i) => s + (i.despesa || 0), 0), [filteredAnnualFinancialPerformance]);
@@ -62,13 +99,13 @@ const ReportsPage: React.FC = () => {
 
   const topExpenseCategoriesReport = useMemo(() => {
     const map: Record<string, number> = {};
-    transactions.filter(t => t.type === 'EXPENSE').forEach(t => { map[t.categoryName] = (map[t.categoryName] || 0) + t.amount; });
+    transactions.filter(t => t.type === 'EXPENSE').forEach(t => { map[t.categoryName || 'Sem categoria'] = (map[t.categoryName || 'Sem categoria'] || 0) + t.amount; });
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, value]) => ({ name, value }));
   }, [transactions]);
 
   const topIncomeSourcesReport = useMemo(() => {
     const map: Record<string, number> = {};
-    transactions.filter(t => t.type === 'INCOME').forEach(t => { map[t.categoryName] = (map[t.categoryName] || 0) + t.amount; });
+    transactions.filter(t => t.type === 'INCOME').forEach(t => { map[t.categoryName || 'Sem categoria'] = (map[t.categoryName || 'Sem categoria'] || 0) + t.amount; });
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, value]) => ({ name, value }));
   }, [transactions]);
 

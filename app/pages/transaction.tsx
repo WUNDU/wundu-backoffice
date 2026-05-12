@@ -15,6 +15,19 @@ import { TransactionItem } from '~/components/dashboard/TransactionItem';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { transactionsService } from '~/services/admin/transactions.service';
 import type { AdminTransactionSummary } from '~/types/admin';
+import { Pagination } from '~/components/ui/Pagination';
+
+function parseJavaDate(d: unknown): Date {
+  if (d == null) return new Date(0);
+  if (Array.isArray(d)) {
+    const [y, mo, day, h = 0, min = 0, s = 0] = d as number[];
+    return new Date(y, mo - 1, day, h, min, s);
+  }
+  const dt = new Date(d as string);
+  return isNaN(dt.getTime()) ? new Date(0) : dt;
+}
+
+const PAGE_SIZE = 50;
 
 /**
  * TransactionsPage Component
@@ -29,22 +42,30 @@ const TransactionsPage: React.FC = () => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [apiTransactions, setApiTransactions] = useState<AdminTransactionSummary[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    transactionsService.list({ size: 100, sort: 'transactionDate,desc' })
-      .then((r) => setApiTransactions(r.content))
+  const loadPage = (p = 0) => {
+    setLoading(true);
+    transactionsService.list({ size: PAGE_SIZE, page: p, sort: 'createdAt,desc' })
+      .then((r) => { setApiTransactions(r.content); setTotalElements(r.totalElements); setTotalPages(r.totalPages); })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadPage(); }, []);
+
+  const handlePageChange = (p: number) => { setPage(p); loadPage(p); };
 
   const mappedTransactions = useMemo(() => apiTransactions.map((tx) => ({
     id: tx.id,
     description: tx.description,
     category: tx.categoryName,
     amount: tx.type === 'INCOME' ? tx.amount : -tx.amount,
-    date: new Date(tx.transactionDate).toLocaleDateString('pt-BR'),
-    type: tx.type === 'INCOME' ? 'income' : 'expense',
+    date: parseJavaDate(tx.transactionDate).toLocaleDateString('pt-BR'),
+    type: (tx.type === 'INCOME' ? 'income' : 'expense') as 'income' | 'expense',
   })), [apiTransactions]);
 
   const filteredTransactions = useMemo(() => {
@@ -60,7 +81,7 @@ const TransactionsPage: React.FC = () => {
   const totalIncome = useMemo(() => filteredTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0), [filteredTransactions]);
   const totalExpenses = useMemo(() => filteredTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0), [filteredTransactions]);
   const netBalance = totalIncome - totalExpenses;
-  const numberOfTransactions = filteredTransactions.length;
+  const numberOfTransactions = totalElements || filteredTransactions.length;
 
   const uniqueCategories = useMemo(() => Array.from(new Set(mappedTransactions.map(t => t.category))), [mappedTransactions]);
 
@@ -79,7 +100,7 @@ const TransactionsPage: React.FC = () => {
   const incomeExpenseCombinedData = useMemo(() => {
     const monthly: Record<string, { receita: number; despesa: number }> = {};
     apiTransactions.forEach(tx => {
-      const m = new Date(tx.transactionDate).toLocaleString('pt-BR', { month: 'short' });
+      const m = parseJavaDate(tx.transactionDate).toLocaleString('pt-BR', { month: 'short' });
       if (!monthly[m]) monthly[m] = { receita: 0, despesa: 0 };
       if (tx.type === 'INCOME') monthly[m].receita += tx.amount;
       else monthly[m].despesa += tx.amount;
@@ -233,6 +254,13 @@ const TransactionsPage: React.FC = () => {
               )}
             </div>
           </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalElements={totalElements}
+            pageSize={PAGE_SIZE}
+            onPageChange={handlePageChange}
+          />
         </div>
       </div>
     </AdminLayout>

@@ -2,30 +2,44 @@ import React, { useState, useEffect } from 'react';
 import { Target, Trash2, TrendingUp } from 'lucide-react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { goalsService } from '~/services/admin/goals.service';
-import type { AdminGoal, AdminGoalStats } from '~/types/admin';
+import type { AdminGoal, GoalStats, Page } from '~/types/admin';
+import { Pagination } from '~/components/ui/Pagination';
+
+const PAGE_SIZE = 20;
 
 const GoalsPage: React.FC = () => {
-  const [goals, setGoals] = useState<AdminGoal[]>([]);
-  const [stats, setStats] = useState<AdminGoalStats | null>(null);
+  const [result, setResult] = useState<Page<AdminGoal> | null>(null);
+  const [stats, setStats] = useState<GoalStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
 
-  useEffect(() => {
-    Promise.all([
-      goalsService.list({ size: 50 }),
-      goalsService.getStats(),
-    ])
-      .then(([g, s]) => { setGoals(g.content); setStats(s); })
+  const loadGoals = (p = 0) => {
+    setLoading(true);
+    goalsService.list({ size: PAGE_SIZE, page: p })
+      .then(r => setResult(r))
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    goalsService.getStats().then(setStats).catch(console.error);
+    loadGoals();
   }, []);
+
+  const handlePageChange = (p: number) => { setPage(p); loadGoals(p); };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Eliminar meta?')) return;
-    try { await goalsService.delete(id); setGoals(prev => prev.filter(g => g.id !== id)); } catch (e) { console.error(e); }
+    try {
+      await goalsService.delete(id);
+      setResult(prev => prev ? { ...prev, content: prev.content.filter(g => g.id !== id) } : null);
+    } catch (e) { console.error(e); }
   };
 
-  const statusLabel = (s: string) => ({ ACTIVE: 'Ativa', COMPLETED: 'Concluída', CANCELLED: 'Cancelada' }[s] || s);
-  const statusColor = (s: string) => ({ ACTIVE: 'bg-blue-100 text-blue-800', COMPLETED: 'bg-green-100 text-green-800', CANCELLED: 'bg-gray-100 text-gray-600' }[s] || 'bg-gray-100 text-gray-600');
+  const goals = result?.content ?? [];
+
+  const statusLabel = (s: string) => ({ ACTIVE: 'Ativa', DONE: 'Concluída', ARCHIVED: 'Arquivada' }[s] || s);
+  const statusColor = (s: string) => ({ ACTIVE: 'bg-blue-100 text-blue-800', DONE: 'bg-green-100 text-green-800', ARCHIVED: 'bg-gray-100 text-gray-600' }[s] || 'bg-gray-100 text-gray-600');
 
   return (
     <AdminLayout>
@@ -36,15 +50,15 @@ const GoalsPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="rounded-md border border-gray-200 bg-white p-5">
               <p className="text-xs text-gray-500 uppercase mb-1">Total</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalGoals}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
             </div>
             <div className="rounded-md border border-gray-200 bg-white p-5">
               <p className="text-xs text-gray-500 uppercase mb-1">Ativas</p>
-              <p className="text-2xl font-bold text-blue-600">{stats.activeGoals}</p>
+              <p className="text-2xl font-bold text-blue-600">{stats.active}</p>
             </div>
             <div className="rounded-md border border-gray-200 bg-white p-5">
               <p className="text-xs text-gray-500 uppercase mb-1">Concluídas</p>
-              <p className="text-2xl font-bold text-green-600">{stats.completedGoals}</p>
+              <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
             </div>
           </div>
         )}
@@ -68,7 +82,7 @@ const GoalsPage: React.FC = () => {
                 {goals.length > 0 ? goals.map(g => (
                   <tr key={g.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center gap-2">
-                      <Target size={14} className="text-[#003cc3]" /> {g.name}
+                      <Target size={14} className="text-[#003cc3]" /> {g.title}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{g.userId}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{g.targetAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'AOA' })}</td>
@@ -94,6 +108,15 @@ const GoalsPage: React.FC = () => {
             </table>
           )}
         </div>
+        {result && (
+          <Pagination
+            page={page}
+            totalPages={result.totalPages}
+            totalElements={result.totalElements}
+            pageSize={PAGE_SIZE}
+            onPageChange={handlePageChange}
+          />
+        )}
       </div>
     </AdminLayout>
   );

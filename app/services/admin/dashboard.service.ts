@@ -9,6 +9,6 @@ export const dashboardService = {
   },
 
   getUserGrowth(params?: { from?: string; to?: string; groupBy?: "DAY" | "WEEK" | "MONTH" }) {
-    return api.get<UserGrowthPoint[]>(`${BASE}/user-growth`, { params }).then((r) => r.data);
+    return api.get<UserGrowthPoint[]>(`${BASE}/stats/users/growth`, { params }).then((r) => r.data);
   },
 };

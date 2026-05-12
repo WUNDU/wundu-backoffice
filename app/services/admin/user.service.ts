@@ -22,34 +22,34 @@ export const userService = {
   },
 
   activate(userId: string) {
-    return api.post<void>(`${BASE}/${userId}/activate`).then((r) => r.data);
+    return api.patch<void>(`${BASE}/${userId}/activate`).then((r) => r.data);
   },
 
   deactivate(userId: string) {
-    return api.post<void>(`${BASE}/${userId}/deactivate`).then((r) => r.data);
+    return api.patch<void>(`${BASE}/${userId}/deactivate`).then((r) => r.data);
   },
 
   freeze(userId: string, body: FreezeUserRequest) {
-    return api.post<void>(`${BASE}/${userId}/freeze`, body).then((r) => r.data);
+    return api.patch<void>(`${BASE}/${userId}/freeze`, body).then((r) => r.data);
   },
 
   unfreeze(userId: string) {
-    return api.post<void>(`${BASE}/${userId}/unfreeze`).then((r) => r.data);
+    return api.patch<void>(`${BASE}/${userId}/unfreeze`).then((r) => r.data);
   },
 
   reviewKyc(userId: string, body: ReviewKycRequest) {
-    return api.post<void>(`${BASE}/${userId}/kyc/review`, body).then((r) => r.data);
+    return api.patch<void>(`${BASE}/${userId}/kyc`, body).then((r) => r.data);
   },
 
   changePlan(userId: string, body: ChangePlanRequest) {
-    return api.post<void>(`${BASE}/${userId}/plan`, body).then((r) => r.data);
+    return api.patch<void>(`${BASE}/${userId}/plan`, body).then((r) => r.data);
   },
 
-  overrideLimits(userId: string, body: OverrideLimitRequest) {
-    return api.post<void>(`${BASE}/${userId}/limits`, body).then((r) => r.data);
+  overrideLimits(userId: string, categoryId: string, body: OverrideLimitRequest) {
+    return api.patch<void>(`${BASE}/${userId}/limits/${categoryId}`, body).then((r) => r.data);
   },
 
   revokeSessions(userId: string) {
-    return api.post<void>(`${BASE}/${userId}/sessions/revoke`).then((r) => r.data);
+    return api.delete<void>(`${BASE}/${userId}/sessions`).then((r) => r.data);
   },
 };

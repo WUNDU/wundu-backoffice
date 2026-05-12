@@ -2,18 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { ClipboardList, Download, Search } from 'lucide-react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { auditService } from '~/services/admin/audit.service';
-import type { AdminAuditLog } from '~/types/admin';
+import type { AuditEntry, Page } from '~/types/admin';
+import { Pagination } from '~/components/ui/Pagination';
+
+const PAGE_SIZE = 20;
 
 const AuditPage: React.FC = () => {
-  const [logs, setLogs] = useState<AdminAuditLog[]>([]);
+  const [result, setResult] = useState<Page<AuditEntry> | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [action, setAction] = useState('');
+  const [page, setPage] = useState(0);
 
-  const load = (params?: object) => {
+  const load = (p = 0, act?: string) => {
     setLoading(true);
-    auditService.list({ size: 100, ...params })
-      .then(r => setLogs(r.content))
+    auditService.list({ size: PAGE_SIZE, page: p, action: (act || undefined) as import('~/types/admin').AuditAction | undefined })
+      .then(r => setResult(r))
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -21,21 +25,25 @@ const AuditPage: React.FC = () => {
   useEffect(() => { load(); }, []);
 
   const handleFilter = () => {
-    load({ action: action || undefined });
+    setPage(0);
+    load(0, action);
   };
+
+  const handlePageChange = (p: number) => { setPage(p); load(p, action); };
 
   const handleExport = async () => {
     try {
-      const blob = await auditService.export({ action: action || undefined });
+      const blob = await auditService.export({ action: (action || undefined) as import('~/types/admin').AuditAction | undefined });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = 'audit.csv'; a.click();
       URL.revokeObjectURL(url);
     } catch (e) { console.error(e); }
   };
 
+  const logs = result?.content ?? [];
   const filtered = logs.filter(l =>
     l.action.toLowerCase().includes(search.toLowerCase()) ||
-    (l.adminId || '').toLowerCase().includes(search.toLowerCase()) ||
+    (l.actorId || '').toLowerCase().includes(search.toLowerCase()) ||
     (l.targetId || '').toLowerCase().includes(search.toLowerCase())
   );
 
@@ -78,10 +86,10 @@ const AuditPage: React.FC = () => {
                 {filtered.length > 0 ? filtered.map(l => (
                   <tr key={l.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{l.action}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{l.adminId || '—'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{l.actorId || '—'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{l.targetId || '—'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{l.ipAddress || '—'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(l.createdAt).toLocaleString('pt-BR')}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{l.actorIp || '—'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(l.timestamp).toLocaleString('pt-BR')}</td>
                   </tr>
                 )) : (
                   <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500">Sem registos.</td></tr>
@@ -90,6 +98,15 @@ const AuditPage: React.FC = () => {
             </table>
           )}
         </div>
+        {result && (
+          <Pagination
+            page={page}
+            totalPages={result.totalPages}
+            totalElements={result.totalElements}
+            pageSize={PAGE_SIZE}
+            onPageChange={handlePageChange}
+          />
+        )}
       </div>
     </AdminLayout>
   );

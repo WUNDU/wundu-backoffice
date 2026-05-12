@@ -9,10 +9,10 @@ export const adminsService = {
   },
 
   promote(body: PromoteAdminRequest) {
-    return api.post<void>(`${BASE}/promote`, body).then((r) => r.data);
+    return api.post<void>(BASE, body).then((r) => r.data);
   },
 
   revoke(adminId: string) {
-    return api.post<void>(`${BASE}/${adminId}/revoke`).then((r) => r.data);
+    return api.delete<void>(`${BASE}/${adminId}`).then((r) => r.data);
   },
 };

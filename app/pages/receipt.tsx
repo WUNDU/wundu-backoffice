@@ -16,6 +16,14 @@ import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { transactionsService } from '~/services/admin/transactions.service';
 import type { AdminTransactionSummary } from '~/types/admin';
 
+function parseJavaDate(d: unknown): Date {
+  if (Array.isArray(d)) {
+    const [y, mo, day, h = 0, min = 0, s = 0] = d as number[];
+    return new Date(y, mo - 1, day, h, min, s);
+  }
+  return new Date(d as string);
+}
+
 const ReceiptsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -25,7 +33,7 @@ const ReceiptsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    transactionsService.list({ type: 'INCOME', size: 100, sort: 'transactionDate,desc' })
+    transactionsService.list({ type: 'INCOME', size: 100, sort: 'createdAt,desc' })
       .then((r) => setApiReceipts(r.content))
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -36,7 +44,7 @@ const ReceiptsPage: React.FC = () => {
     description: tx.description,
     category: tx.categoryName,
     amount: tx.amount,
-    date: new Date(tx.transactionDate).toLocaleDateString('pt-BR'),
+    date: parseJavaDate(tx.transactionDate).toLocaleDateString('pt-BR'),
     type: 'income',
     source: tx.source,
     status: 'Concluído',
@@ -45,7 +53,7 @@ const ReceiptsPage: React.FC = () => {
   const incomeData = useMemo(() => {
     const monthly: Record<string, number> = {};
     apiReceipts.forEach(tx => {
-      const m = new Date(tx.transactionDate).toLocaleString('pt-BR', { month: 'short' });
+      const m = parseJavaDate(tx.transactionDate).toLocaleString('pt-BR', { month: 'short' });
       monthly[m] = (monthly[m] || 0) + tx.amount;
     });
     return Object.entries(monthly).map(([month, receita]) => ({ month, receita }));

@@ -192,8 +192,8 @@ export interface AdminTransactionSummary {
   description: string;
   status: string;
   categoryName: string;
-  transactionDate: string;
-  createdAt: string;
+  transactionDate: string | number[];
+  createdAt: string | number[];
 }
 
 export interface AdminTransactionDetail extends AdminTransactionSummary {

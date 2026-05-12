@@ -15,6 +15,9 @@ import { ExpenseItem } from '~/components/dashboard/ExpenseItem';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { transactionsService } from '~/services/admin/transactions.service';
 import type { AdminTransactionSummary } from '~/types/admin';
+import { Pagination } from '~/components/ui/Pagination';
+
+const PAGE_SIZE = 50;
 
 /**
  * ExpensesPage Component
@@ -23,27 +26,44 @@ import type { AdminTransactionSummary } from '~/types/admin';
  * and a detailed list of individual expenses with filtering capabilities.
  * Designed for an administrative backoffice view.
  */
+// Backend returns LocalDateTime as number array [year, month, day, hour, min, sec?]
+function parseJavaDate(d: unknown): Date {
+  if (Array.isArray(d)) {
+    const [y, mo, day, h = 0, min = 0, s = 0] = d as number[];
+    return new Date(y, mo - 1, day, h, min, s);
+  }
+  return new Date(d as string);
+}
+
 const ExpensesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [apiExpenses, setApiExpenses] = useState<AdminTransactionSummary[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    transactionsService.list({ type: 'EXPENSE', size: 100, sort: 'transactionDate,desc' })
-      .then((r) => setApiExpenses(r.content))
+  const loadPage = (p = 0) => {
+    setLoading(true);
+    transactionsService.list({ type: 'EXPENSE', size: PAGE_SIZE, page: p, sort: 'createdAt,desc' })
+      .then((r) => { setApiExpenses(r.content); setTotalElements(r.totalElements); setTotalPages(r.totalPages); })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadPage(); }, []);
+
+  const handlePageChange = (p: number) => { setPage(p); loadPage(p); };
 
   const detailedExpenses = useMemo(() => apiExpenses.map(tx => ({
     id: tx.id,
     description: tx.description,
     category: tx.categoryName,
     amount: -tx.amount,
-    date: new Date(tx.transactionDate).toLocaleDateString('pt-BR'),
+    date: parseJavaDate(tx.transactionDate).toLocaleDateString('pt-BR'),
     type: 'expense',
     source: tx.source,
     status: 'Concluído',
@@ -53,7 +73,7 @@ const ExpensesPage: React.FC = () => {
   const expenseData = useMemo(() => {
     const monthly: Record<string, number> = {};
     apiExpenses.forEach(tx => {
-      const m = new Date(tx.transactionDate).toLocaleString('pt-BR', { month: 'short' });
+      const m = parseJavaDate(tx.transactionDate).toLocaleString('pt-BR', { month: 'short' });
       monthly[m] = (monthly[m] || 0) + tx.amount;
     });
     return Object.entries(monthly).map(([month, despesa]) => ({ month, despesa }));
@@ -149,6 +169,13 @@ const ExpensesPage: React.FC = () => {
             </div>
           )}
         </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalElements={totalElements}
+          pageSize={PAGE_SIZE}
+          onPageChange={handlePageChange}
+        />
       </div>
     </AdminLayout>
   );

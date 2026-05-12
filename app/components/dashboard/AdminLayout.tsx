@@ -2,7 +2,7 @@ import { Link, useLocation } from '@remix-run/react';
 import {
   Home, ArrowLeftRight, TrendingUp, TrendingDown, BarChart3,
   ShieldAlert, Users, Bell, Tag, Target, Flag, Server, ScrollText,
-  LogOut, Menu, X,
+  LogOut, Menu, X, Bot, MonitorSmartphone, Radio, FileText, DatabaseZap,
 } from 'lucide-react';
 import { DashboardLayoutProps } from '~/types/types';
 import { useAuthStore } from '~/store/auth-store';
@@ -33,6 +33,7 @@ const navGroups: NavGroup[] = [
       { to: '/dashboard/access-management', icon: Users, label: 'Gestão de Acesso' },
       { to: '/dashboard/security', icon: ShieldAlert, label: 'Segurança' },
       { to: '/dashboard/tickets', icon: Bell, label: 'Notificações' },
+      { to: '/dashboard/sessions', icon: MonitorSmartphone, label: 'Sessões' },
     ],
   },
   {
@@ -40,6 +41,10 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/dashboard/categories', icon: Tag, label: 'Categorias' },
       { to: '/dashboard/goals', icon: Target, label: 'Metas' },
+      { to: '/dashboard/documents', icon: FileText, label: 'Documentos OCR' },
+      { to: '/dashboard/rabbitmq', icon: Radio, label: 'RabbitMQ' },
+      { to: '/dashboard/chat-cache', icon: DatabaseZap, label: 'Cache de Chat' },
+      { to: '/dashboard/ai', icon: Bot, label: 'IA' },
       { to: '/dashboard/feature-flags', icon: Flag, label: 'Feature Flags' },
       { to: '/dashboard/audit', icon: ScrollText, label: 'Audit Log' },
       { to: '/dashboard/system', icon: Server, label: 'Sistema' },
@@ -58,6 +63,11 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/tickets': 'Notificações',
   '/dashboard/categories': 'Categorias',
   '/dashboard/goals': 'Metas',
+  '/dashboard/documents': 'Documentos OCR',
+  '/dashboard/rabbitmq': 'Filas RabbitMQ',
+  '/dashboard/chat-cache': 'Cache de Chat',
+  '/dashboard/sessions': 'Sessões Activas',
+  '/dashboard/ai': 'IA — Monitorização',
   '/dashboard/feature-flags': 'Feature Flags',
   '/dashboard/audit': 'Audit Log',
   '/dashboard/system': 'Sistema',

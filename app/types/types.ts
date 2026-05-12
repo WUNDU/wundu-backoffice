@@ -111,7 +111,7 @@ export interface TransactionItemProps {
 }
 
 export interface Transaction {
-  id: number;
+  id: number | string;
   description: string;
   category: string;
   amount: number;

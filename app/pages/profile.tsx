@@ -3,10 +3,12 @@ import { Briefcase, Clock, Edit, MapPin, Phone, Save, XCircle, Lock, Key } from 
 import React, { useState } from 'react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { useAuthStore } from '~/store/auth-store';
+import { useToast, ToastContainer } from '~/components/ui/Toast';
 
 export default function ProfilePage() {
   const { user } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
+  const { toasts, showToast, dismiss } = useToast();
 
   const profile = {
     id: user?.id ?? '',
@@ -29,7 +31,7 @@ export default function ProfilePage() {
 
   const handleSave = () => {
     setIsEditing(false);
-    alert('Perfil atualizado com sucesso!');
+    showToast('Perfil atualizado com sucesso!', 'success');
   };
 
   const handleCancel = () => {
@@ -204,6 +206,7 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </AdminLayout>
   );
 }

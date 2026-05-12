@@ -18,6 +18,14 @@ import { dashboardService } from '~/services/admin/dashboard.service';
 import { transactionsService } from '~/services/admin/transactions.service';
 import type { DashboardStats, AdminTransactionSummary, UserGrowthPoint } from '~/types/admin';
 
+function parseJavaDate(d: unknown): Date {
+  if (Array.isArray(d)) {
+    const [y, mo, day, h = 0, min = 0, s = 0] = d as number[];
+    return new Date(y, mo - 1, day, h, min, s);
+  }
+  return new Date(d as string);
+}
+
 
 // New component to handle individual geographical distribution bars with animation
 interface GeoDistributionBarProps {
@@ -115,7 +123,7 @@ export default function AdminDashboard() {
   }));
 
   const txChartData = recentTransactions.slice(0, 7).map((tx) => ({
-    month: new Date(tx.transactionDate).toLocaleString('pt-BR', { month: 'short' }),
+    month: parseJavaDate(tx.transactionDate).toLocaleString('pt-BR', { month: 'short' }),
     receita: tx.type === 'INCOME' ? tx.amount : 0,
     despesa: tx.type === 'EXPENSE' ? tx.amount : 0,
   }));
@@ -126,8 +134,8 @@ export default function AdminDashboard() {
     description: tx.description,
     category: tx.categoryName,
     amount: tx.type === 'INCOME' ? tx.amount : -tx.amount,
-    date: new Date(tx.transactionDate).toLocaleDateString('pt-BR'),
-    type: tx.type === 'INCOME' ? 'income' : 'expense',
+    date: parseJavaDate(tx.transactionDate).toLocaleDateString('pt-BR'),
+    type: (tx.type === 'INCOME' ? 'income' : 'expense') as 'income' | 'expense',
   }));
 
   const geoDistributionData: Array<{ region: string; users: number }> = [];

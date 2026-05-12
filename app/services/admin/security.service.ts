@@ -13,6 +13,6 @@ export const securityService = {
   },
 
   unblock(key: string) {
-    return api.post<void>(`${BASE}/unblock`, { key }).then((r) => r.data);
+    return api.delete<void>(`${BASE}/blocked/${key}`).then((r) => r.data);
   },
 };

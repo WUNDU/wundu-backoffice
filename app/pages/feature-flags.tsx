@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Flag, ToggleLeft, ToggleRight } from 'lucide-react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { featureFlagsService } from '~/services/admin/feature-flags.service';
-import type { AdminFeatureFlag } from '~/types/admin';
+import type { FeatureFlag } from '~/types/admin';
 
 const FeatureFlagsPage: React.FC = () => {
-  const [flags, setFlags] = useState<AdminFeatureFlag[]>([]);
+  const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
 
@@ -16,10 +16,11 @@ const FeatureFlagsPage: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleToggle = async (flag: AdminFeatureFlag) => {
+  const handleToggle = async (flag: FeatureFlag) => {
     setToggling(flag.key);
+    const isEnabled = flag.value.toLowerCase() === 'true';
     try {
-      const updated = await featureFlagsService.update(flag.key, { enabled: !flag.enabled });
+      const updated = await featureFlagsService.update(flag.key, { value: isEnabled ? 'false' : 'true' });
       setFlags(prev => prev.map(f => f.key === flag.key ? updated : f));
     } catch (e) { console.error(e); }
     finally { setToggling(null); }
@@ -37,26 +38,30 @@ const FeatureFlagsPage: React.FC = () => {
             <p className="text-center text-gray-500 py-8">A carregar...</p>
           ) : (
             <div className="divide-y divide-gray-100">
-              {flags.length > 0 ? flags.map(flag => (
+                {flags.length > 0 ? flags.map(flag => {
+                const isEnabled = flag.value.toLowerCase() === 'true';
+                return (
                 <div key={flag.key} className="flex items-center justify-between py-4 px-2">
                   <div>
                     <p className="text-sm font-semibold text-gray-900">{flag.key}</p>
                     {flag.description && <p className="text-xs text-gray-500 mt-0.5">{flag.description}</p>}
+                    <p className="text-xs text-gray-400 mt-0.5">Valor: {flag.value}</p>
                   </div>
                   <button
                     onClick={() => handleToggle(flag)}
                     disabled={toggling === flag.key}
                     className="flex items-center gap-2 text-sm font-medium transition-colors"
                   >
-                    {flag.enabled
+                    {isEnabled
                       ? <ToggleRight size={28} className="text-green-500" />
                       : <ToggleLeft size={28} className="text-gray-400" />}
-                    <span className={flag.enabled ? 'text-green-600' : 'text-gray-500'}>
-                      {flag.enabled ? 'Activo' : 'Inactivo'}
+                    <span className={isEnabled ? 'text-green-600' : 'text-gray-500'}>
+                      {isEnabled ? 'Activo' : 'Inactivo'}
                     </span>
                   </button>
                 </div>
-              )) : (
+                );
+              }) : (
                 <p className="text-center text-gray-500 py-8">Sem feature flags.</p>
               )}
             </div>

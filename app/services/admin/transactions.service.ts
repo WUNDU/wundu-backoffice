@@ -3,6 +3,13 @@ import type { AdminTransactionDetail, AdminTransactionSummary, Page, Transaction
 
 const BASE = "/admin/transactions";
 
+export interface TransactionExportParams {
+  userId?: string;
+  type?: "INCOME" | "EXPENSE";
+  from?: string;
+  to?: string;
+}
+
 export const transactionsService = {
   list(params?: TransactionListParams) {
     return api.get<Page<AdminTransactionSummary>>(BASE, { params }).then((r) => r.data);
@@ -10,6 +17,14 @@ export const transactionsService = {
 
   get(transactionId: string) {
     return api.get<AdminTransactionDetail>(`${BASE}/${transactionId}`).then((r) => r.data);
+  },
+
+  exportCsv(params?: TransactionExportParams) {
+    return api.get<Blob>(`${BASE}/exports`, { params, responseType: "blob" }).then((r) => r.data);
+  },
+
+  getAnomalies(params?: { page?: number; size?: number; sort?: string }) {
+    return api.get<Page<AdminTransactionSummary>>(`${BASE}/anomalies`, { params }).then((r) => r.data);
   },
 
   delete(transactionId: string) {

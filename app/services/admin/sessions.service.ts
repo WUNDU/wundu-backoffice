@@ -9,6 +9,6 @@ export const sessionsService = {
   },
 
   revoke(tokenId: string) {
-    return api.post<void>(`${BASE}/${tokenId}/revoke`).then((r) => r.data);
+    return api.delete<void>(`${BASE}/${tokenId}`).then((r) => r.data);
   },
 };

@@ -2,27 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { categoriesService } from '~/services/admin/categories.service';
-import type { AdminCategory } from '~/types/admin';
+import type { AdminCategory, Page } from '~/types/admin';
+import { Pagination } from '~/components/ui/Pagination';
+
+const PAGE_SIZE = 20;
 
 const CategoriesPage: React.FC = () => {
-  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [result, setResult] = useState<Page<AdminCategory> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminCategory | null>(null);
-  const [form, setForm] = useState({ name: '', type: 'EXPENSE', icon: '', color: '' });
+  const [form, setForm] = useState({ name: '', type: 'EXPENSE' });
 
-  const load = () => {
+  const load = (p = 0) => {
     setLoading(true);
-    categoriesService.list()
-      .then(setCategories)
+    categoriesService.list({ page: p, size: PAGE_SIZE })
+      .then(r => setResult(r))
       .catch(console.error)
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => { setEditing(null); setForm({ name: '', type: 'EXPENSE', icon: '', color: '' }); setShowModal(true); };
-  const openEdit = (c: AdminCategory) => { setEditing(c); setForm({ name: c.name, type: c.type, icon: c.icon || '', color: c.color || '' }); setShowModal(true); };
+  const handlePageChange = (p: number) => { setPage(p); load(p); };
+
+  const openCreate = () => { setEditing(null); setForm({ name: '', type: 'EXPENSE' }); setShowModal(true); };
+  const openEdit = (c: AdminCategory) => { setEditing(c); setForm({ name: c.name, type: c.type }); setShowModal(true); };
 
   const handleSave = async () => {
     try {
@@ -32,14 +38,16 @@ const CategoriesPage: React.FC = () => {
         await categoriesService.create(form);
       }
       setShowModal(false);
-      load();
+      load(page);
     } catch (e) { console.error(e); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Eliminar categoria?')) return;
-    try { await categoriesService.delete(id); load(); } catch (e) { console.error(e); }
+    try { await categoriesService.delete(id); load(page); } catch (e) { console.error(e); }
   };
+
+  const categories = result?.content ?? [];
 
   return (
     <AdminLayout>
@@ -60,8 +68,8 @@ const CategoriesPage: React.FC = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ícone</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cor</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Removida em</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                 </tr>
               </thead>
@@ -72,10 +80,8 @@ const CategoriesPage: React.FC = () => {
                       <Tag size={14} className="text-[#003cc3]" /> {c.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{c.type}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{c.icon || '—'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {c.color ? <span className="inline-block w-5 h-5 rounded-full border" style={{ background: c.color }} /> : '—'}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{c.isActive ? 'Activa' : 'Inactiva'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.deletedAt ? new Date(c.deletedAt).toLocaleDateString('pt-BR') : '—'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                       <button onClick={() => openEdit(c)} className="text-[#003cc3] hover:text-[#00216b] mr-3"><Pencil size={16} /></button>
                       <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700"><Trash2 size={16} /></button>
@@ -89,6 +95,16 @@ const CategoriesPage: React.FC = () => {
           )}
         </div>
 
+        {result && (
+          <Pagination
+            page={page}
+            totalPages={result.totalPages}
+            totalElements={result.totalElements}
+            pageSize={PAGE_SIZE}
+            onPageChange={handlePageChange}
+          />
+        )}
+
         {showModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="rounded-md border border-gray-200 bg-white p-6 w-full max-w-md">
@@ -100,8 +116,6 @@ const CategoriesPage: React.FC = () => {
                   <option value="INCOME">Receita</option>
                   <option value="BOTH">Ambos</option>
                 </select>
-                <input className="w-full border rounded-lg px-3 py-2" placeholder="Ícone (emoji ou nome)" value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))} />
-                <input className="w-full border rounded-lg px-3 py-2" placeholder="Cor (hex)" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} />
               </div>
               <div className="flex justify-end gap-3 mt-4">
                 <button onClick={() => setShowModal(false)} className="px-4 py-2 border rounded-lg text-sm">Cancelar</button>
