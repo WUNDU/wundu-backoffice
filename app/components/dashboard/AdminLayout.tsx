@@ -75,6 +75,21 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/profile': 'Meu Perfil',
 };
 
+/*
+  Intent: Financial admin backoffice — operator managing users, transactions, compliance.
+  Precision instrument; authoritative navy territory.
+
+  Palette: #f4f7ff sidebar surface (brand-tinted, barely visible); #00216b primary borders/accents;
+  cool slate for text hierarchy. Every surface stays in the same blue-navy hue family.
+
+  Depth: Borders-only. Single fine line separates sidebar from content. No shadows inside sidebar.
+
+  Signature: border-l-2 active ledger-line — a precise structural mark, not a button fill.
+  Appears on active nav items in expanded mode; traces the brand color with rounded-md corners.
+
+  Spacing base: 4px (Tailwind 1 unit). Nav items: py-[7px], gap-2.5. Labels: tracking-[0.12em].
+*/
+
 function SidebarContent({
   onClose,
   collapsed = false,
@@ -95,64 +110,106 @@ function SidebarContent({
     : 'A';
 
   return (
-    <div className="h-full flex flex-col bg-white border-r border-gray-200">
-      {/* Logo */}
-      <div className={`flex items-center h-14 border-b border-gray-200 shrink-0 ${collapsed ? 'justify-between px-2' : 'justify-between px-4'}`}>
+    <div className="h-full flex flex-col bg-[#f4f7ff] border-r border-[#00216b]/[0.1]">
+
+      {/* ── Logo header ── */}
+      <div className={`flex items-center h-14 border-b border-[#00216b]/[0.08] shrink-0 ${collapsed ? 'justify-center px-2' : 'justify-between px-4'}`}>
         {collapsed ? (
-          <img src="/logotype.svg" alt="Wundu" className="h-6 w-auto" />
-        ) : (
-          <div className="flex items-center gap-2">
-            <img src="/logotype.svg" alt="Wundu" className="h-7 w-auto" />
-            <span className="text-[15px] font-semibold tracking-tight text-gray-900">Wundu</span>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-gray-400">admin</span>
-          </div>
-        )}
-        {/* Desktop collapse toggle / Mobile close button */}
-        {onToggleCollapse ? (
+          /* Collapsed: toggle button is the only element */
           <button
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
             onClick={onToggleCollapse}
-            title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+            title="Expandir sidebar"
+            className="flex items-center justify-center w-8 h-8 rounded-md text-[#00216b]/40 hover:text-[#00216b] hover:bg-[#00216b]/[0.06] transition-colors"
           >
-            {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+            <ChevronRight size={15} />
           </button>
         ) : (
-          <button className="md:hidden text-gray-400 hover:text-gray-600" onClick={onClose}>
-            <X size={18} />
-          </button>
+          <>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <img src="/logotype.svg" alt="Wundu" className="h-7 w-auto shrink-0" />
+              <span className="text-[14px] font-semibold tracking-tight text-gray-900 truncate">Wundu</span>
+              <span className="text-[9px] font-medium tracking-[0.1em] uppercase bg-[#00216b]/[0.08] text-[#00216b]/60 px-1.5 py-0.5 rounded-sm shrink-0 select-none">
+                admin
+              </span>
+            </div>
+            {/* Desktop: collapse chevron */}
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                title="Colapsar sidebar"
+                className="ml-2 flex items-center justify-center w-6 h-6 rounded-md text-[#00216b]/35 hover:text-[#00216b] hover:bg-[#00216b]/[0.06] transition-colors shrink-0"
+              >
+                <ChevronLeft size={14} />
+              </button>
+            )}
+            {/* Mobile: close button */}
+            {!onToggleCollapse && (
+              <button
+                onClick={onClose}
+                className="flex items-center justify-center w-7 h-7 rounded-md text-slate-400 hover:text-slate-600 hover:bg-[#00216b]/[0.05] transition-colors"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2">
+      {/* ── Navigation ── */}
+      <nav
+        className="flex-1 overflow-y-auto py-3 px-2"
+        style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,33,107,0.12) transparent' }}
+      >
         {navGroups.map((group) => (
-          <div key={group.label} className="mb-4">
-            {!collapsed && (
-              <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          <div key={group.label} className="mb-3">
+
+            {/* Group label — collapsed: height spacer to preserve rhythm */}
+            {collapsed ? (
+              <div className="h-[22px]" />
+            ) : (
+              <div className="px-2.5 pb-1.5 text-[9px] font-semibold tracking-[0.12em] uppercase text-[#00216b]/35 select-none">
                 {group.label}
               </div>
             )}
-            {collapsed && <div className="px-2 pb-1 h-4" />}
+
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const active = isActive(item.to);
                 const Icon = item.icon;
+
+                if (collapsed) {
+                  return (
+                    <li key={item.to}>
+                      <Link
+                        to={item.to}
+                        onClick={onClose}
+                        title={item.label}
+                        className={`flex items-center justify-center py-[7px] rounded-md transition-colors ${
+                          active
+                            ? 'bg-[#00216b]/[0.1] text-[#00216b]'
+                            : 'text-slate-500 hover:bg-[#00216b]/[0.05] hover:text-slate-800'
+                        }`}
+                      >
+                        <Icon size={15} className="shrink-0" />
+                      </Link>
+                    </li>
+                  );
+                }
+
+                /* Expanded — signature: border-l-2 ledger-line active indicator */
                 return (
                   <li key={item.to}>
                     <Link
                       to={item.to}
                       onClick={onClose}
-                      title={collapsed ? item.label : undefined}
-                      className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors ${
-                        collapsed ? 'justify-center' : ''
-                      } ${
+                      className={`flex items-center gap-2.5 rounded-md pl-2 pr-3 py-[7px] text-[13px] transition-colors border-l-2 ${
                         active
-                          ? 'bg-[#00216b]/[0.08] text-[#00216b] font-medium'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                          ? 'border-[#00216b] bg-[#00216b]/[0.06] text-[#00216b] font-medium'
+                          : 'border-transparent text-slate-600 hover:bg-[#00216b]/[0.04] hover:text-slate-900'
                       }`}
                     >
-                      <Icon size={15} className="shrink-0" />
-                      {!collapsed && <span className="truncate">{item.label}</span>}
+                      <Icon size={14} className="shrink-0" />
+                      <span className="truncate">{item.label}</span>
                     </Link>
                   </li>
                 );
@@ -162,43 +219,44 @@ function SidebarContent({
         ))}
       </nav>
 
-      {/* User footer */}
-      <div className="border-t border-gray-200 p-3 shrink-0">
+      {/* ── User footer ── */}
+      <div className="border-t border-[#00216b]/[0.08] p-3 shrink-0">
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
             <div
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[11px] font-semibold shrink-0"
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[10px] font-semibold shrink-0 ring-2 ring-[#00216b]/[0.18]"
               title={user?.name ?? 'Administrador'}
             >
               {initials}
             </div>
             <button
               onClick={() => logout()}
-              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+              className="flex items-center justify-center w-7 h-7 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
               title="Encerrar sessão"
             >
-              <LogOut size={14} />
+              <LogOut size={13} />
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[11px] font-semibold shrink-0">
+          <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[10px] font-semibold shrink-0 ring-2 ring-[#00216b]/[0.18]">
               {initials}
             </div>
             <div className="flex-1 min-w-0">
               <div className="truncate text-[12px] font-medium text-gray-900">{user?.name ?? 'Administrador'}</div>
-              <div className="truncate text-[10px] text-gray-400">{user?.email ?? ''}</div>
+              <div className="truncate text-[10px] text-slate-400">{user?.email ?? ''}</div>
             </div>
             <button
               onClick={() => logout()}
-              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+              className="flex items-center justify-center w-6 h-6 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
               title="Encerrar sessão"
             >
-              <LogOut size={14} />
+              <LogOut size={13} />
             </button>
           </div>
         )}
       </div>
+
     </div>
   );
 }
@@ -216,16 +274,20 @@ export function AdminLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="flex h-screen bg-[#f8fafc] font-inter">
+
       {/* Mobile overlay */}
-      <div
-        className={`fixed inset-0 z-40 bg-black/30 md:hidden transition-opacity duration-200 ${
+      <button
+        type="button"
+        aria-label="Fechar menu"
+        tabIndex={sidebarOpen ? 0 : -1}
+        className={`fixed inset-0 z-40 w-full bg-black/25 md:hidden transition-opacity duration-200 ${
           sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setSidebarOpen(false)}
       />
 
-      {/* Sidebar desktop */}
-      <aside className={`hidden md:flex shrink-0 flex-col transition-[width] duration-200 ${collapsed ? 'w-16' : 'w-60'}`}>
+      {/* Sidebar — desktop */}
+      <aside className={`hidden md:flex shrink-0 flex-col transition-[width] duration-200 ${collapsed ? 'w-[60px]' : 'w-60'}`}>
         <SidebarContent
           onClose={() => {}}
           collapsed={collapsed}
@@ -233,7 +295,7 @@ export function AdminLayout({ children }: DashboardLayoutProps) {
         />
       </aside>
 
-      {/* Sidebar mobile — always mounted, slid in/out to preserve scroll position */}
+      {/* Sidebar — mobile (always mounted to preserve scroll position) */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col md:hidden shadow-xl transition-transform duration-200 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -242,41 +304,43 @@ export function AdminLayout({ children }: DashboardLayoutProps) {
         <SidebarContent onClose={() => setSidebarOpen(false)} />
       </aside>
 
-      {/* Main */}
+      {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Header */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-gray-200 bg-white/80 backdrop-blur px-4 shrink-0">
+
+        {/* Topbar */}
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[#00216b]/[0.08] bg-white/90 backdrop-blur-sm px-4 shrink-0">
           <button
-            className="md:hidden text-gray-500 hover:text-gray-700"
+            className="md:hidden text-slate-500 hover:text-slate-700 transition-colors"
             onClick={() => setSidebarOpen(true)}
           >
-            <Menu size={20} />
+            <Menu size={18} />
           </button>
 
           {/* Breadcrumb */}
           <nav className="flex items-center gap-1.5 text-[13px] min-w-0">
-            <span className="font-medium text-gray-900">Wundu</span>
-            <span className="text-gray-300">/</span>
-            <span className="font-medium text-gray-600 truncate">{currentTitle}</span>
+            <span className="font-medium text-slate-400">Wundu</span>
+            <span className="text-slate-300">/</span>
+            <span className="font-medium text-slate-700 truncate">{currentTitle}</span>
           </nav>
 
-          <div className="ml-auto flex items-center gap-1.5">
-            <button className="relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
-              <Bell size={16} />
-              <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-500" />
+          <div className="ml-auto flex items-center gap-1">
+            <button className="relative p-1.5 text-slate-500 hover:text-slate-700 hover:bg-[#00216b]/[0.04] rounded-md transition-colors">
+              <Bell size={15} />
+              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
             </button>
-            <Link to="/dashboard/profile">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[11px] font-semibold">
+            <Link to="/dashboard/profile" className="ml-1">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[10px] font-semibold ring-2 ring-[#00216b]/[0.18] hover:ring-[#00216b]/[0.35] transition-all">
                 {initials}
               </div>
             </Link>
           </div>
         </header>
 
-        {/* Content */}
+        {/* Page content */}
         <main className="flex-1 overflow-auto">
           {children}
         </main>
+
       </div>
     </div>
   );
