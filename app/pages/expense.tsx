@@ -110,8 +110,23 @@ const ExpensesPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card title="Total de Despesas" value={totalExpenses} icon={TrendingDown} color="danger" trend={true} percentage={-10.0} />
-          <Card title="Despesa Média" value={averageExpense} icon={Wallet} color="primary" trend={true} percentage={-3.0} />
+          {(() => {
+            const overallAvgExp = apiExpenses.length > 0
+              ? apiExpenses.reduce((s, e) => s + e.amount, 0) / apiExpenses.length
+              : 0;
+            const pctTotalExpenses = filteredExpenseCategoryData.length > 0
+              ? -Math.round((filteredExpenseCategoryData[0].value / Math.max(totalExpenses, 1)) * 100)
+              : 0;
+            const pctAvgExpense = overallAvgExp > 0
+              ? -Math.round(((averageExpense - overallAvgExp) / overallAvgExp) * 100)
+              : 0;
+            return (
+              <>
+                <Card title="Total de Despesas" value={totalExpenses} icon={TrendingDown} color="danger" trend={true} percentage={pctTotalExpenses} />
+                <Card title="Despesa Média" value={averageExpense} icon={Wallet} color="primary" trend={true} percentage={pctAvgExpense} />
+              </>
+            );
+          })()}
           <Card title="Nº de Despesas" value={numberOfExpenses} icon={List} color="secondary" isCurrency={false} />
           <Card title="Categorias Únicas" value={uniqueCategories.length} icon={Tag} color="danger" isCurrency={false} />
         </div>

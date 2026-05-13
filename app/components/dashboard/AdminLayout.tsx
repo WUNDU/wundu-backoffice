@@ -3,6 +3,7 @@ import {
   Home, ArrowLeftRight, TrendingUp, TrendingDown, BarChart3,
   ShieldAlert, Users, Bell, Tag, Target, Flag, Server, ScrollText,
   LogOut, Menu, X, Bot, MonitorSmartphone, Radio, FileText, DatabaseZap,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { DashboardLayoutProps } from '~/types/types';
 import { useAuthStore } from '~/store/auth-store';
@@ -74,7 +75,15 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/profile': 'Meu Perfil',
 };
 
-function SidebarContent({ onClose }: { onClose: () => void }) {
+function SidebarContent({
+  onClose,
+  collapsed = false,
+  onToggleCollapse,
+}: {
+  onClose: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+}) {
   const location = useLocation();
   const { logout, user } = useAuthStore();
 
@@ -88,24 +97,42 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
   return (
     <div className="h-full flex flex-col bg-white border-r border-gray-200">
       {/* Logo */}
-      <div className="flex items-center justify-between h-14 px-4 border-b border-gray-200 shrink-0">
-        <div className="flex items-center gap-2">
-          <img src="/logotype.svg" alt="Wundu" className="h-7 w-auto" />
-          <span className="text-[15px] font-semibold tracking-tight text-gray-900">Wundu</span>
-          <span className="text-[10px] font-mono uppercase tracking-widest text-gray-400">admin</span>
-        </div>
-        <button className="md:hidden text-gray-400 hover:text-gray-600" onClick={onClose}>
-          <X size={18} />
-        </button>
+      <div className={`flex items-center h-14 border-b border-gray-200 shrink-0 ${collapsed ? 'justify-between px-2' : 'justify-between px-4'}`}>
+        {collapsed ? (
+          <img src="/logotype.svg" alt="Wundu" className="h-6 w-auto" />
+        ) : (
+          <div className="flex items-center gap-2">
+            <img src="/logotype.svg" alt="Wundu" className="h-7 w-auto" />
+            <span className="text-[15px] font-semibold tracking-tight text-gray-900">Wundu</span>
+            <span className="text-[10px] font-mono uppercase tracking-widest text-gray-400">admin</span>
+          </div>
+        )}
+        {/* Desktop collapse toggle / Mobile close button */}
+        {onToggleCollapse ? (
+          <button
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
+            onClick={onToggleCollapse}
+            title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+          >
+            {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+          </button>
+        ) : (
+          <button className="md:hidden text-gray-400 hover:text-gray-600" onClick={onClose}>
+            <X size={18} />
+          </button>
+        )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
+      <nav className="flex-1 overflow-y-auto py-3 px-2">
         {navGroups.map((group) => (
           <div key={group.label} className="mb-4">
-            <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-              {group.label}
-            </div>
+            {!collapsed && (
+              <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                {group.label}
+              </div>
+            )}
+            {collapsed && <div className="px-2 pb-1 h-4" />}
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const active = isActive(item.to);
@@ -115,14 +142,17 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
                     <Link
                       to={item.to}
                       onClick={onClose}
+                      title={collapsed ? item.label : undefined}
                       className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors ${
+                        collapsed ? 'justify-center' : ''
+                      } ${
                         active
                           ? 'bg-[#00216b]/[0.08] text-[#00216b] font-medium'
                           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                       }`}
                     >
                       <Icon size={15} className="shrink-0" />
-                      <span className="truncate">{item.label}</span>
+                      {!collapsed && <span className="truncate">{item.label}</span>}
                     </Link>
                   </li>
                 );
@@ -134,22 +164,40 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
 
       {/* User footer */}
       <div className="border-t border-gray-200 p-3 shrink-0">
-        <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[11px] font-semibold shrink-0">
-            {initials}
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-2">
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[11px] font-semibold shrink-0"
+              title={user?.name ?? 'Administrador'}
+            >
+              {initials}
+            </div>
+            <button
+              onClick={() => logout()}
+              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+              title="Encerrar sessão"
+            >
+              <LogOut size={14} />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="truncate text-[12px] font-medium text-gray-900">{user?.name ?? 'Administrador'}</div>
-            <div className="truncate text-[10px] text-gray-400">{user?.email ?? ''}</div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[11px] font-semibold shrink-0">
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="truncate text-[12px] font-medium text-gray-900">{user?.name ?? 'Administrador'}</div>
+              <div className="truncate text-[10px] text-gray-400">{user?.email ?? ''}</div>
+            </div>
+            <button
+              onClick={() => logout()}
+              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+              title="Encerrar sessão"
+            >
+              <LogOut size={14} />
+            </button>
           </div>
-          <button
-            onClick={() => logout()}
-            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-            title="Encerrar sessão"
-          >
-            <LogOut size={14} />
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -158,6 +206,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
 export function AdminLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const currentTitle = PAGE_TITLES[location.pathname] ?? 'Wundu Admin';
   const { user } = useAuthStore();
@@ -168,24 +217,30 @@ export function AdminLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="flex h-screen bg-[#f8fafc] font-inter">
       {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/30 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <div
+        className={`fixed inset-0 z-40 bg-black/30 md:hidden transition-opacity duration-200 ${
+          sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setSidebarOpen(false)}
+      />
 
       {/* Sidebar desktop */}
-      <aside className="hidden md:flex w-60 shrink-0 flex-col">
-        <SidebarContent onClose={() => setSidebarOpen(false)} />
+      <aside className={`hidden md:flex shrink-0 flex-col transition-[width] duration-200 ${collapsed ? 'w-16' : 'w-60'}`}>
+        <SidebarContent
+          onClose={() => {}}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed(c => !c)}
+        />
       </aside>
 
-      {/* Sidebar mobile */}
-      {sidebarOpen && (
-        <aside className="fixed inset-y-0 left-0 z-50 w-60 flex flex-col md:hidden shadow-xl">
-          <SidebarContent onClose={() => setSidebarOpen(false)} />
-        </aside>
-      )}
+      {/* Sidebar mobile — always mounted, slid in/out to preserve scroll position */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col md:hidden shadow-xl transition-transform duration-200 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <SidebarContent onClose={() => setSidebarOpen(false)} />
+      </aside>
 
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">

@@ -110,39 +110,47 @@ const TransactionsPage: React.FC = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card
-            title="Total de Receitas"
-            value={totalIncome}
-            icon={TrendingUp}
-            color="success"
-            trend={true}
-            percentage={12.5} // Example percentage
-          />
-          <Card
-            title="Total de Despesas"
-            value={totalExpenses}
-            icon={TrendingDown}
-            color="danger"
-            trend={true}
-            percentage={-8.2} // Example percentage
-          />
-          <Card
-            title="Balanço Líquido"
-            value={netBalance}
-            icon={DollarSign}
-            color={netBalance >= 0 ? 'primary' : 'danger'}
-            trend={true}
-            percentage={netBalance >= 0 ? 5.1 : -3.0} // Example percentage
-          />
-          <Card
-            title="Nº de Transações"
-            value={numberOfTransactions}
-            icon={List}
-            color="secondary"
-            isCurrency={false}
-          />
-        </div>
+        {(() => {
+          const volSum = totalIncome + totalExpenses;
+          const pctIncome = volSum > 0 ? Math.round((totalIncome / volSum) * 100) : 0;
+          const pctExpenses = volSum > 0 ? -Math.round((totalExpenses / volSum) * 100) : 0;
+          const pctBalance = volSum > 0 ? Math.round(((totalIncome - totalExpenses) / volSum) * 100) : 0;
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card
+                title="Total de Receitas"
+                value={totalIncome}
+                icon={TrendingUp}
+                color="success"
+                trend={true}
+                percentage={pctIncome}
+              />
+              <Card
+                title="Total de Despesas"
+                value={totalExpenses}
+                icon={TrendingDown}
+                color="danger"
+                trend={true}
+                percentage={pctExpenses}
+              />
+              <Card
+                title="Balanço Líquido"
+                value={netBalance}
+                icon={DollarSign}
+                color={netBalance >= 0 ? 'primary' : 'danger'}
+                trend={true}
+                percentage={pctBalance}
+              />
+              <Card
+                title="Nº de Transações"
+                value={numberOfTransactions}
+                icon={List}
+                color="secondary"
+                isCurrency={false}
+              />
+            </div>
+          );
+        })()}
 
         {/* Filters Section */}
         <div className="rounded-md border border-gray-200 bg-white p-6">

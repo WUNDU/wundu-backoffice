@@ -151,12 +151,30 @@ export default function AdminDashboard() {
 
       <div className="px-6 py-5 space-y-5">
         {/* KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card title="Total de Usuários" value={loading ? 0 : (stats?.totalUsers ?? 0)} icon={Users} trend percentage={9} color="primary" isCurrency={false} />
-          <Card title="Novos Usuários (Mês)" value={loading ? 0 : (stats?.newUsersLast30Days ?? 0)} icon={UserPlus} trend percentage={12} color="success" isCurrency={false} />
-          <Card title="Transações (Mês)" value={loading ? 0 : (stats?.totalTransactions ?? 0)} icon={Activity} trend percentage={7} color="secondary" isCurrency={false} />
-          <Card title="Tickets de Suporte" value={loading ? 0 : (stats?.activeSessions ?? 0)} icon={Bell} trend percentage={-15} color="danger" isCurrency={false} />
-        </div>
+        {(() => {
+          const total = stats?.totalUsers ?? 0;
+          const pctTotalUsers = total > 0
+            ? Math.round(((stats?.newUsersLast30Days ?? 0) / total) * 100)
+            : 0;
+          const pctNewUsers = total > 0
+            ? Math.round(((stats?.kycApprovedUsers ?? 0) / total) * 100)
+            : 0;
+          const incomeExpenseSum = (stats?.totalIncome ?? 0) + (stats?.totalExpenses ?? 0);
+          const pctTransactions = incomeExpenseSum > 0
+            ? Math.round((((stats?.totalIncome ?? 0) - (stats?.totalExpenses ?? 0)) / incomeExpenseSum) * 100)
+            : 0;
+          const pctSessions = total > 0
+            ? Math.round(((stats?.activeSessions ?? 0) / total) * 100)
+            : 0;
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card title="Total de Usuários" value={loading ? 0 : total} icon={Users} trend percentage={pctTotalUsers} color="primary" isCurrency={false} />
+              <Card title="Novos Usuários (Mês)" value={loading ? 0 : (stats?.newUsersLast30Days ?? 0)} icon={UserPlus} trend percentage={pctNewUsers} color="success" isCurrency={false} />
+              <Card title="Transações (Mês)" value={loading ? 0 : (stats?.totalTransactions ?? 0)} icon={Activity} trend percentage={pctTransactions} color="secondary" isCurrency={false} />
+              <Card title="Tickets de Suporte" value={loading ? 0 : (stats?.activeSessions ?? 0)} icon={Bell} trend percentage={pctSessions} color="danger" isCurrency={false} />
+            </div>
+          );
+        })()}
 
         {/* Estatísticas de Usuários */}
         <div className="rounded-md border border-gray-200 bg-white">

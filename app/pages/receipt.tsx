@@ -99,8 +99,23 @@ const ReceiptsPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card title="Total de Receitas" value={totalIncome} icon={TrendingUp} color="success" trend={true} percentage={15.0} />
-          <Card title="Receita Média" value={averageIncome} icon={Wallet} color="primary" trend={true} percentage={5.0} />
+          {(() => {
+            const overallAvg = apiReceipts.length > 0
+              ? apiReceipts.reduce((s, r) => s + r.amount, 0) / apiReceipts.length
+              : 0;
+            const pctTotalIncome = filteredIncomeSourceData.length > 0
+              ? Math.round((filteredIncomeSourceData[0].value / Math.max(totalIncome, 1)) * 100)
+              : 0;
+            const pctAvgIncome = overallAvg > 0
+              ? Math.round(((averageIncome - overallAvg) / overallAvg) * 100)
+              : 0;
+            return (
+              <>
+                <Card title="Total de Receitas" value={totalIncome} icon={TrendingUp} color="success" trend={true} percentage={pctTotalIncome} />
+                <Card title="Receita Média" value={averageIncome} icon={Wallet} color="primary" trend={true} percentage={pctAvgIncome} />
+              </>
+            );
+          })()}
           <Card title="Nº de Receitas" value={numberOfReceipts} icon={List} color="secondary" isCurrency={false} />
           <Card title="Fontes Únicas" value={uniqueSources.length} icon={Tag} color="success" isCurrency={false} />
         </div>

@@ -124,39 +124,47 @@ const ReportsPage: React.FC = () => {
         </div>
 
         {/* Summary Cards for Reports */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card
-            title="Receita Total Agregada"
-            value={totalReportIncome}
-            icon={TrendingUp}
-            color="success"
-            trend={true}
-            percentage={8.5}
-          />
-          <Card
-            title="Despesa Total Agregada"
-            value={totalReportExpenses}
-            icon={TrendingDown}
-            color="danger"
-            trend={true}
-            percentage={-4.1}
-          />
-          <Card
-            title="Balanço Líquido Agregado"
-            value={totalReportNetBalance}
-            icon={DollarSign}
-            color={totalReportNetBalance >= 0 ? 'primary' : 'danger'}
-            trend={true}
-            percentage={totalReportNetBalance >= 0 ? 6.2 : -2.5}
-          />
-          <Card
-            title="Total de Transações"
-            value={totalTransactionsCount}
-            icon={Users} // Changed icon to Users to represent overall user activity in transactions
-            color="secondary"
-            isCurrency={false}
-          />
-        </div>
+        {(() => {
+          const volSum = totalReportIncome + totalReportExpenses;
+          const pctIncome = volSum > 0 ? Math.round((totalReportIncome / volSum) * 100) : 0;
+          const pctExpenses = volSum > 0 ? -Math.round((totalReportExpenses / volSum) * 100) : 0;
+          const pctBalance = volSum > 0 ? Math.round(((totalReportIncome - totalReportExpenses) / volSum) * 100) : 0;
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card
+                title="Receita Total Agregada"
+                value={totalReportIncome}
+                icon={TrendingUp}
+                color="success"
+                trend={true}
+                percentage={pctIncome}
+              />
+              <Card
+                title="Despesa Total Agregada"
+                value={totalReportExpenses}
+                icon={TrendingDown}
+                color="danger"
+                trend={true}
+                percentage={pctExpenses}
+              />
+              <Card
+                title="Balanço Líquido Agregado"
+                value={totalReportNetBalance}
+                icon={DollarSign}
+                color={totalReportNetBalance >= 0 ? 'primary' : 'danger'}
+                trend={true}
+                percentage={pctBalance}
+              />
+              <Card
+                title="Total de Transações"
+                value={totalTransactionsCount}
+                icon={Users}
+                color="secondary"
+                isCurrency={false}
+              />
+            </div>
+          );
+        })()}
 
         {/* Filters Section */}
         <div className="rounded-md border border-gray-200 bg-white p-6">
