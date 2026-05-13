@@ -2,58 +2,44 @@
 import { Users, ShieldCheck, Trash2, Search, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
-import { userService } from '~/services/admin/user.service';
-import { adminsService } from '~/services/admin/admins.service';
+import { useAdminUsersStore } from '~/store/admin-users-store';
 import type { AdminUserSummary, AdminSummary } from '~/types/admin';
 
 
 export default function AccessManagementPage() {
   const [activeTab, setActiveTab] = useState('users');
   const [searchTerm, setSearchTerm] = useState('');
-  const [users, setUsers] = useState<AdminUserSummary[]>([]);
-  const [admins, setAdmins] = useState<AdminSummary[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  const loadData = () => {
-    setLoading(true);
-    Promise.all([
-      userService.list({ size: 50 }),
-      adminsService.list({ size: 50 }),
-    ])
-      .then(([u, a]) => {
-        setUsers(u.content);
-        setAdmins(a.content);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+  const {
+    users,
+    admins,
+    isLoading: loading,
+    fetch: fetchUsers,
+    refresh: refreshUsers,
+    deactivateUser,
+    revokeAdmin,
+  } = useAdminUsersStore();
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  const filteredUsers = users.filter(u =>
+  const filteredUsers = users.filter((u: AdminUserSummary) =>
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredAdmins = admins.filter(a =>
+  const filteredAdmins = admins.filter((a: AdminSummary) =>
     a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     a.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleDeactivateUser = async (id: string) => {
     if (!window.confirm('Desativar este utilizador?')) return;
-    try {
-      await userService.deactivate(id);
-      loadData();
-    } catch (e) { console.error(e); }
+    await deactivateUser(id);
   };
 
   const handleRevokeAdmin = async (id: string) => {
     if (!window.confirm('Revogar privilégios de admin?')) return;
-    try {
-      await adminsService.revoke(id);
-      loadData();
-    } catch (e) { console.error(e); }
+    await revokeAdmin(id);
   };
 
   return (
@@ -89,7 +75,7 @@ export default function AccessManagementPage() {
             />
             <Search size={16} className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
-          <button className="flex items-center px-4 py-2 bg-[#00216b] text-white rounded-lg hover:bg-[#003cc3] transition-colors duration-200" onClick={loadData}>
+          <button className="flex items-center px-4 py-2 bg-[#00216b] text-white rounded-lg hover:bg-[#003cc3] transition-colors duration-200" onClick={() => refreshUsers()}>
             <RefreshCw size={16} className="mr-2" />
             <span>Atualizar</span>
           </button>

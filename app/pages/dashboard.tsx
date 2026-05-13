@@ -14,9 +14,7 @@ import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { Card } from '~/components/dashboard/Card';
 import { ChartCard } from '~/components/dashboard/ChartCard';
 import { TransactionItem } from '~/components/dashboard/TransactionItem';
-import { dashboardService } from '~/services/admin/dashboard.service';
-import { transactionsService } from '~/services/admin/transactions.service';
-import type { DashboardStats, AdminTransactionSummary, UserGrowthPoint } from '~/types/admin';
+import { useAdminDashboardStore } from '~/store/admin-dashboard-store';
 
 function parseJavaDate(d: unknown): Date {
   if (Array.isArray(d)) {
@@ -97,25 +95,9 @@ const GeoDistributionBar: React.FC<GeoDistributionBarProps> = ({ region, totalUs
 
 export default function AdminDashboard() {
   const [period, setPeriod] = useState('month');
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [growthData, setGrowthData] = useState<UserGrowthPoint[]>([]);
-  const [recentTransactions, setRecentTransactions] = useState<AdminTransactionSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { stats, growthData, recentTransactions, isLoading: loading, fetch } = useAdminDashboardStore();
 
-  useEffect(() => {
-    Promise.all([
-      dashboardService.getStats(),
-      dashboardService.getUserGrowth({ groupBy: 'MONTH' }),
-      transactionsService.list({ size: 8, sort: 'createdAt,desc' }),
-    ])
-      .then(([s, g, t]) => {
-        setStats(s);
-        setGrowthData(g);
-        setRecentTransactions(t.content);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  useEffect(() => { fetch(); }, [fetch]);
 
   const chartGrowthData = growthData.map((p) => ({
     month: new Date(p.date).toLocaleString('pt-BR', { month: 'short' }),

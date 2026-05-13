@@ -13,7 +13,7 @@ import { ChartCard } from '~/components/dashboard/ChartCard';
 import { PieChartCard } from '~/components/dashboard/PieChartCard';
 import { ReceiptItem } from '~/components/dashboard/ReceiptItem';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
-import { transactionsService } from '~/services/admin/transactions.service';
+import { useAdminTransactionsStore } from '~/store/admin-transactions-store';
 import type { AdminTransactionSummary } from '~/types/admin';
 
 function parseJavaDate(d: unknown): Date {
@@ -29,15 +29,11 @@ const ReceiptsPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [apiReceipts, setApiReceipts] = useState<AdminTransactionSummary[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    transactionsService.list({ type: 'INCOME', size: 100, sort: 'createdAt,desc' })
-      .then((r) => setApiReceipts(r.content))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  const { income: slot, isLoading: loading, fetch: fetchTx } = useAdminTransactionsStore();
+  const apiReceipts: AdminTransactionSummary[] = slot.items;
+
+  useEffect(() => { fetchTx('INCOME', 0); }, [fetchTx]);
 
   const detailedReceipts = useMemo(() => apiReceipts.map(tx => ({
     id: tx.id,

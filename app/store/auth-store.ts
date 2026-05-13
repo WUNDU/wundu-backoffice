@@ -137,6 +137,12 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         authService.logoutApi().catch(() => {});
         set({ token: null, isAuthenticated: false, isLoading: false, error: null, user: null });
+        // Clear all persisted data caches on logout
+        import("~/store/admin-dashboard-store").then(({ useAdminDashboardStore }) => useAdminDashboardStore.getState().clearAll());
+        import("~/store/admin-categories-store").then(({ useAdminCategoriesStore }) => useAdminCategoriesStore.getState().clearAll());
+        import("~/store/admin-transactions-store").then(({ useAdminTransactionsStore }) => useAdminTransactionsStore.getState().clearAll());
+        import("~/store/admin-users-store").then(({ useAdminUsersStore }) => useAdminUsersStore.getState().clearAll());
+        import("~/store/admin-goals-store").then(({ useAdminGoalsStore }) => useAdminGoalsStore.getState().clearAll());
         if (typeof window !== "undefined") {
           window.location.href = "/login";
         }

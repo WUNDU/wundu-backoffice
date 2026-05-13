@@ -13,8 +13,7 @@ import { ChartCard } from '~/components/dashboard/ChartCard';
 import { PieChartCard } from '~/components/dashboard/PieChartCard';
 import { TransactionItem } from '~/components/dashboard/TransactionItem';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
-import { transactionsService } from '~/services/admin/transactions.service';
-import type { AdminTransactionSummary } from '~/types/admin';
+import { useAdminTransactionsStore } from '~/store/admin-transactions-store';
 import { Pagination } from '~/components/ui/Pagination';
 
 function parseJavaDate(d: unknown): Date {
@@ -41,23 +40,16 @@ const TransactionsPage: React.FC = () => {
   const [selectedType, setSelectedType] = useState<'' | 'INCOME' | 'EXPENSE'>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [apiTransactions, setApiTransactions] = useState<AdminTransactionSummary[]>([]);
-  const [totalElements, setTotalElements] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(true);
 
-  const loadPage = (p = 0) => {
-    setLoading(true);
-    transactionsService.list({ size: PAGE_SIZE, page: p, sort: 'createdAt,desc' })
-      .then((r) => { setApiTransactions(r.content); setTotalElements(r.totalElements); setTotalPages(r.totalPages); })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+  const { all: slot, isLoading: loading, fetch: fetchTx, refresh: refreshTx } = useAdminTransactionsStore();
+  const apiTransactions = slot.items;
+  const totalElements = slot.totalElements;
+  const totalPages = slot.totalPages;
 
-  useEffect(() => { loadPage(); }, []);
+  useEffect(() => { fetchTx('', 0); }, [fetchTx]);
 
-  const handlePageChange = (p: number) => { setPage(p); loadPage(p); };
+  const handlePageChange = (p: number) => { setPage(p); refreshTx('', p); };
 
   const mappedTransactions = useMemo(() => apiTransactions.map((tx) => ({
     id: tx.id,

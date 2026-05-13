@@ -1,42 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Trash2, TrendingUp } from 'lucide-react';
+import { Target, Trash2 } from 'lucide-react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
-import { goalsService } from '~/services/admin/goals.service';
-import type { AdminGoal, GoalStats, Page } from '~/types/admin';
+import { useAdminGoalsStore } from '~/store/admin-goals-store';
 import { Pagination } from '~/components/ui/Pagination';
 
-const PAGE_SIZE = 20;
-
 const GoalsPage: React.FC = () => {
-  const [result, setResult] = useState<Page<AdminGoal> | null>(null);
-  const [stats, setStats] = useState<GoalStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    items: goals,
+    totalElements,
+    totalPages,
+    stats,
+    isLoading: loading,
+    fetch: fetchGoals,
+    refresh: refreshGoals,
+    remove,
+  } = useAdminGoalsStore();
+
   const [page, setPage] = useState(0);
 
-  const loadGoals = (p = 0) => {
-    setLoading(true);
-    goalsService.list({ size: PAGE_SIZE, page: p })
-      .then(r => setResult(r))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+  useEffect(() => { fetchGoals(); }, [fetchGoals]);
 
-  useEffect(() => {
-    goalsService.getStats().then(setStats).catch(console.error);
-    loadGoals();
-  }, []);
-
-  const handlePageChange = (p: number) => { setPage(p); loadGoals(p); };
+  const handlePageChange = (p: number) => { setPage(p); refreshGoals(p); };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Eliminar meta?')) return;
     try {
-      await goalsService.delete(id);
-      setResult(prev => prev ? { ...prev, content: prev.content.filter(g => g.id !== id) } : null);
+      await import('~/services/admin/goals.service').then(({ goalsService }) => goalsService.delete(id));
+      remove(id);
     } catch (e) { console.error(e); }
   };
-
-  const goals = result?.content ?? [];
 
   const statusLabel = (s: string) => ({ ACTIVE: 'Ativa', DONE: 'Concluída', ARCHIVED: 'Arquivada' }[s] || s);
   const statusColor = (s: string) => ({ ACTIVE: 'bg-blue-100 text-blue-800', DONE: 'bg-green-100 text-green-800', ARCHIVED: 'bg-gray-100 text-gray-600' }[s] || 'bg-gray-100 text-gray-600');
@@ -108,12 +100,12 @@ const GoalsPage: React.FC = () => {
             </table>
           )}
         </div>
-        {result && (
+        {totalPages > 0 && (
           <Pagination
             page={page}
-            totalPages={result.totalPages}
-            totalElements={result.totalElements}
-            pageSize={PAGE_SIZE}
+            totalPages={totalPages}
+            totalElements={totalElements}
+            pageSize={20}
             onPageChange={handlePageChange}
           />
         )}

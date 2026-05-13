@@ -13,7 +13,7 @@ import { ChartCard } from '~/components/dashboard/ChartCard';
 import { PieChartCard } from '~/components/dashboard/PieChartCard';
 import { ExpenseItem } from '~/components/dashboard/ExpenseItem';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
-import { transactionsService } from '~/services/admin/transactions.service';
+import { useAdminTransactionsStore } from '~/store/admin-transactions-store';
 import type { AdminTransactionSummary } from '~/types/admin';
 import { Pagination } from '~/components/ui/Pagination';
 
@@ -40,23 +40,16 @@ const ExpensesPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [apiExpenses, setApiExpenses] = useState<AdminTransactionSummary[]>([]);
-  const [totalElements, setTotalElements] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(true);
 
-  const loadPage = (p = 0) => {
-    setLoading(true);
-    transactionsService.list({ type: 'EXPENSE', size: PAGE_SIZE, page: p, sort: 'createdAt,desc' })
-      .then((r) => { setApiExpenses(r.content); setTotalElements(r.totalElements); setTotalPages(r.totalPages); })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+  const { expense: slot, isLoading: loading, fetch: fetchTx, refresh: refreshTx } = useAdminTransactionsStore();
+  const apiExpenses: AdminTransactionSummary[] = slot.items;
+  const totalElements = slot.totalElements;
+  const totalPages = slot.totalPages;
 
-  useEffect(() => { loadPage(); }, []);
+  useEffect(() => { fetchTx('EXPENSE', 0); }, [fetchTx]);
 
-  const handlePageChange = (p: number) => { setPage(p); loadPage(p); };
+  const handlePageChange = (p: number) => { setPage(p); refreshTx('EXPENSE', p); };
 
   const detailedExpenses = useMemo(() => apiExpenses.map(tx => ({
     id: tx.id,

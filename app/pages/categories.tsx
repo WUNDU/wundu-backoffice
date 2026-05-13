@@ -1,53 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
-import { categoriesService } from '~/services/admin/categories.service';
-import type { AdminCategory, Page } from '~/types/admin';
+import type { AdminCategory } from '~/types/admin';
+import { useAdminCategoriesStore } from '~/store/admin-categories-store';
 import { Pagination } from '~/components/ui/Pagination';
 
 const PAGE_SIZE = 20;
 
 const CategoriesPage: React.FC = () => {
-  const [result, setResult] = useState<Page<AdminCategory> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    items: categories,
+    totalElements,
+    totalPages,
+    isLoading: loading,
+    fetch: fetchCategories,
+    refresh: refreshCategories,
+    create: createCategory,
+    update: updateCategory,
+    remove: removeCategory,
+  } = useAdminCategoriesStore();
+
   const [page, setPage] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminCategory | null>(null);
   const [form, setForm] = useState({ name: '', type: 'EXPENSE' });
 
-  const load = (p = 0) => {
-    setLoading(true);
-    categoriesService.list({ page: p, size: PAGE_SIZE })
-      .then(r => setResult(r))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+  useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
-  useEffect(() => { load(); }, []);
-
-  const handlePageChange = (p: number) => { setPage(p); load(p); };
+  const handlePageChange = (p: number) => { setPage(p); refreshCategories(p); };
 
   const openCreate = () => { setEditing(null); setForm({ name: '', type: 'EXPENSE' }); setShowModal(true); };
   const openEdit = (c: AdminCategory) => { setEditing(c); setForm({ name: c.name, type: c.type }); setShowModal(true); };
 
   const handleSave = async () => {
-    try {
-      if (editing) {
-        await categoriesService.update(editing.id, form);
-      } else {
-        await categoriesService.create(form);
-      }
-      setShowModal(false);
-      load(page);
-    } catch (e) { console.error(e); }
+    if (editing) {
+      await updateCategory(editing.id, form);
+    } else {
+      await createCategory(form);
+    }
+    setShowModal(false);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Eliminar categoria?')) return;
-    try { await categoriesService.delete(id); load(page); } catch (e) { console.error(e); }
+    await removeCategory(id);
   };
-
-  const categories = result?.content ?? [];
 
   return (
     <AdminLayout>
@@ -95,11 +92,11 @@ const CategoriesPage: React.FC = () => {
           )}
         </div>
 
-        {result && (
+        {totalPages > 0 && (
           <Pagination
             page={page}
-            totalPages={result.totalPages}
-            totalElements={result.totalElements}
+            totalPages={totalPages}
+            totalElements={totalElements}
             pageSize={PAGE_SIZE}
             onPageChange={handlePageChange}
           />
