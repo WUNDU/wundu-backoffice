@@ -1,78 +1,107 @@
-import { Link, useLocation } from '@remix-run/react';
+import { Link, useLocation } from "@remix-run/react";
 import {
-  Home, ArrowLeftRight, TrendingUp, TrendingDown, BarChart3,
-  ShieldAlert, Users, Bell, Tag, Target, Flag, Server, ScrollText,
-  LogOut, Menu, X, Bot, MonitorSmartphone, Radio, FileText, DatabaseZap,
-  ChevronLeft, ChevronRight,
-} from 'lucide-react';
-import { DashboardLayoutProps } from '~/types/types';
-import { useAuthStore } from '~/store/auth-store';
-import { useState } from 'react';
+  Home,
+  ArrowLeftRight,
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
+  ShieldAlert,
+  Users,
+  Bell,
+  Tag,
+  Target,
+  Flag,
+  Server,
+  ScrollText,
+  LogOut,
+  Menu,
+  X,
+  Bot,
+  MonitorSmartphone,
+  Radio,
+  FileText,
+  DatabaseZap,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { DashboardLayoutProps } from "~/types/types";
+import { useAuthStore } from "~/store/auth-store";
+import { useState } from "react";
 
 type NavItem = { to: string; icon: React.ElementType; label: string };
 type NavGroup = { label: string; items: NavItem[] };
 
 const navGroups: NavGroup[] = [
   {
-    label: 'Visão Geral',
+    label: "Visão Geral",
+    items: [{ to: "/dashboard", icon: Home, label: "Painel Principal" }],
+  },
+  {
+    label: "Financeiro",
     items: [
-      { to: '/dashboard', icon: Home, label: 'Painel Principal' },
+      {
+        to: "/dashboard/transaction",
+        icon: ArrowLeftRight,
+        label: "Transações",
+      },
+      { to: "/dashboard/receipt", icon: TrendingUp, label: "Receitas" },
+      { to: "/dashboard/expense", icon: TrendingDown, label: "Despesas" },
+      { to: "/dashboard/reports", icon: BarChart3, label: "Relatórios" },
     ],
   },
   {
-    label: 'Financeiro',
+    label: "Utilizadores",
     items: [
-      { to: '/dashboard/transaction', icon: ArrowLeftRight, label: 'Transações' },
-      { to: '/dashboard/receipt', icon: TrendingUp, label: 'Receitas' },
-      { to: '/dashboard/expense', icon: TrendingDown, label: 'Despesas' },
-      { to: '/dashboard/reports', icon: BarChart3, label: 'Relatórios' },
+      {
+        to: "/dashboard/access-management",
+        icon: Users,
+        label: "Gestão de Acesso",
+      },
+      { to: "/dashboard/security", icon: ShieldAlert, label: "Segurança" },
+      { to: "/dashboard/tickets", icon: Bell, label: "Notificações" },
+      { to: "/dashboard/sessions", icon: MonitorSmartphone, label: "Sessões" },
     ],
   },
   {
-    label: 'Utilizadores',
+    label: "Plataforma",
     items: [
-      { to: '/dashboard/access-management', icon: Users, label: 'Gestão de Acesso' },
-      { to: '/dashboard/security', icon: ShieldAlert, label: 'Segurança' },
-      { to: '/dashboard/tickets', icon: Bell, label: 'Notificações' },
-      { to: '/dashboard/sessions', icon: MonitorSmartphone, label: 'Sessões' },
-    ],
-  },
-  {
-    label: 'Plataforma',
-    items: [
-      { to: '/dashboard/categories', icon: Tag, label: 'Categorias' },
-      { to: '/dashboard/goals', icon: Target, label: 'Metas' },
-      { to: '/dashboard/documents', icon: FileText, label: 'Documentos OCR' },
-      { to: '/dashboard/rabbitmq', icon: Radio, label: 'RabbitMQ' },
-      { to: '/dashboard/chat-cache', icon: DatabaseZap, label: 'Cache de Chat' },
-      { to: '/dashboard/ai', icon: Bot, label: 'IA' },
-      { to: '/dashboard/feature-flags', icon: Flag, label: 'Feature Flags' },
-      { to: '/dashboard/audit', icon: ScrollText, label: 'Audit Log' },
-      { to: '/dashboard/system', icon: Server, label: 'Sistema' },
+      { to: "/dashboard/categories", icon: Tag, label: "Categorias" },
+      { to: "/dashboard/goals", icon: Target, label: "Metas" },
+      { to: "/dashboard/documents", icon: FileText, label: "Documentos OCR" },
+      { to: "/dashboard/rabbitmq", icon: Radio, label: "RabbitMQ" },
+      {
+        to: "/dashboard/chat-cache",
+        icon: DatabaseZap,
+        label: "Cache de Chat",
+      },
+      { to: "/dashboard/ai", icon: Bot, label: "IA" },
+      { to: "/dashboard/feature-flags", icon: Flag, label: "Feature Flags" },
+      { to: "/dashboard/audit", icon: ScrollText, label: "Audit Log" },
+      { to: "/dashboard/system", icon: Server, label: "Sistema" },
     ],
   },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/dashboard/transaction': 'Transações',
-  '/dashboard/receipt': 'Receitas',
-  '/dashboard/expense': 'Despesas',
-  '/dashboard/reports': 'Relatórios',
-  '/dashboard/access-management': 'Gestão de Acesso',
-  '/dashboard/security': 'Segurança',
-  '/dashboard/tickets': 'Notificações',
-  '/dashboard/categories': 'Categorias',
-  '/dashboard/goals': 'Metas',
-  '/dashboard/documents': 'Documentos OCR',
-  '/dashboard/rabbitmq': 'Filas RabbitMQ',
-  '/dashboard/chat-cache': 'Cache de Chat',
-  '/dashboard/sessions': 'Sessões Activas',
-  '/dashboard/ai': 'IA — Monitorização',
-  '/dashboard/feature-flags': 'Feature Flags',
-  '/dashboard/audit': 'Audit Log',
-  '/dashboard/system': 'Sistema',
-  '/dashboard/profile': 'Meu Perfil',
+  "/dashboard": "Dashboard",
+  "/dashboard/transaction": "Transações",
+  "/dashboard/receipt": "Receitas",
+  "/dashboard/expense": "Despesas",
+  "/dashboard/reports": "Relatórios",
+  "/dashboard/access-management": "Gestão de Acesso",
+  "/dashboard/security": "Segurança",
+  "/dashboard/tickets": "Notificações",
+  "/dashboard/categories": "Categorias",
+  "/dashboard/goals": "Metas",
+  "/dashboard/documents": "Documentos OCR",
+  "/dashboard/rabbitmq": "Filas RabbitMQ",
+  "/dashboard/chat-cache": "Cache de Chat",
+  "/dashboard/sessions": "Sessões Activas",
+  "/dashboard/ai": "IA — Monitorização",
+  "/dashboard/feature-flags": "Feature Flags",
+  "/dashboard/audit": "Audit Log",
+  "/dashboard/system": "Sistema",
+  "/dashboard/profile": "Meu Perfil",
 };
 
 /*
@@ -103,17 +132,27 @@ function SidebarContent({
   const { logout, user } = useAuthStore();
 
   const isActive = (to: string) =>
-    to === '/dashboard' ? location.pathname === to : location.pathname.startsWith(to);
+    to === "/dashboard"
+      ? location.pathname === to
+      : location.pathname.startsWith(to);
 
   const initials = user?.name
-    ? user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-    : 'A';
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "A";
 
   return (
     <div className="h-full flex flex-col bg-[#f4f7ff] border-r border-[#00216b]/[0.1]">
-
       {/* ── Logo header ── */}
-      <div className={`flex items-center h-14 border-b border-[#00216b]/[0.08] shrink-0 ${collapsed ? 'justify-center px-2' : 'justify-between px-4'}`}>
+      <div
+        className={`flex items-center h-14 border-b border-[#00216b]/[0.08] shrink-0 ${
+          collapsed ? "justify-center px-2" : "justify-between px-4"
+        }`}
+      >
         {collapsed ? (
           /* Collapsed: toggle button is the only element */
           <button
@@ -126,11 +165,11 @@ function SidebarContent({
         ) : (
           <>
             <div className="flex items-center gap-2.5 min-w-0">
-              <img src="/logotype.svg" alt="Wundu" className="h-7 w-auto shrink-0" />
-              <span className="text-[14px] font-semibold tracking-tight text-gray-900 truncate">Wundu</span>
-              <span className="text-[9px] font-medium tracking-[0.1em] uppercase bg-[#00216b]/[0.08] text-[#00216b]/60 px-1.5 py-0.5 rounded-sm shrink-0 select-none">
-                admin
-              </span>
+              <img
+                src="/logotype.svg"
+                alt="Wundu"
+                className="h-7 w-auto shrink-0"
+              />
             </div>
             {/* Desktop: collapse chevron */}
             {onToggleCollapse && (
@@ -158,11 +197,13 @@ function SidebarContent({
       {/* ── Navigation ── */}
       <nav
         className="flex-1 overflow-y-auto py-3 px-2"
-        style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,33,107,0.12) transparent' }}
+        style={{
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(0,33,107,0.12) transparent",
+        }}
       >
         {navGroups.map((group) => (
           <div key={group.label} className="mb-3">
-
             {/* Group label — collapsed: height spacer to preserve rhythm */}
             {collapsed ? (
               <div className="h-[22px]" />
@@ -186,8 +227,8 @@ function SidebarContent({
                         title={item.label}
                         className={`flex items-center justify-center py-[7px] rounded-md transition-colors ${
                           active
-                            ? 'bg-[#00216b]/[0.1] text-[#00216b]'
-                            : 'text-slate-500 hover:bg-[#00216b]/[0.05] hover:text-slate-800'
+                            ? "bg-[#00216b]/[0.1] text-[#00216b]"
+                            : "text-slate-500 hover:bg-[#00216b]/[0.05] hover:text-slate-800"
                         }`}
                       >
                         <Icon size={15} className="shrink-0" />
@@ -204,8 +245,8 @@ function SidebarContent({
                       onClick={onClose}
                       className={`flex items-center gap-2.5 rounded-md pl-2 pr-3 py-[7px] text-[13px] transition-colors border-l-2 ${
                         active
-                          ? 'border-[#00216b] bg-[#00216b]/[0.06] text-[#00216b] font-medium'
-                          : 'border-transparent text-slate-600 hover:bg-[#00216b]/[0.04] hover:text-slate-900'
+                          ? "border-[#00216b] bg-[#00216b]/[0.06] text-[#00216b] font-medium"
+                          : "border-transparent text-slate-600 hover:bg-[#00216b]/[0.04] hover:text-slate-900"
                       }`}
                     >
                       <Icon size={14} className="shrink-0" />
@@ -225,7 +266,7 @@ function SidebarContent({
           <div className="flex flex-col items-center gap-2">
             <div
               className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00216b] text-white text-[10px] font-semibold shrink-0 ring-2 ring-[#00216b]/[0.18]"
-              title={user?.name ?? 'Administrador'}
+              title={user?.name ?? "Administrador"}
             >
               {initials}
             </div>
@@ -243,8 +284,12 @@ function SidebarContent({
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="truncate text-[12px] font-medium text-gray-900">{user?.name ?? 'Administrador'}</div>
-              <div className="truncate text-[10px] text-slate-400">{user?.email ?? ''}</div>
+              <div className="truncate text-[12px] font-medium text-gray-900">
+                {user?.name ?? "Administrador"}
+              </div>
+              <div className="truncate text-[10px] text-slate-400">
+                {user?.email ?? ""}
+              </div>
             </div>
             <button
               onClick={() => logout()}
@@ -256,7 +301,6 @@ function SidebarContent({
           </div>
         )}
       </div>
-
     </div>
   );
 }
@@ -266,39 +310,49 @@ export function AdminLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
-  const currentTitle = PAGE_TITLES[location.pathname] ?? 'Wundu Admin';
+  const currentTitle = PAGE_TITLES[location.pathname] ?? "Wundu Admin";
   const { user } = useAuthStore();
   const initials = user?.name
-    ? user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-    : 'A';
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "A";
 
   return (
     <div className="flex h-screen bg-[#f8fafc] font-inter">
-
       {/* Mobile overlay */}
       <button
         type="button"
         aria-label="Fechar menu"
         tabIndex={sidebarOpen ? 0 : -1}
         className={`fixed inset-0 z-40 w-full bg-black/25 md:hidden transition-opacity duration-200 ${
-          sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          sidebarOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
         }`}
         onClick={() => setSidebarOpen(false)}
       />
 
       {/* Sidebar — desktop */}
-      <aside className={`hidden md:flex shrink-0 flex-col transition-[width] duration-200 ${collapsed ? 'w-[60px]' : 'w-60'}`}>
+      <aside
+        className={`hidden md:flex shrink-0 flex-col transition-[width] duration-200 ${
+          collapsed ? "w-[60px]" : "w-60"
+        }`}
+      >
         <SidebarContent
           onClose={() => {}}
           collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed(c => !c)}
+          onToggleCollapse={() => setCollapsed((c) => !c)}
         />
       </aside>
 
       {/* Sidebar — mobile (always mounted to preserve scroll position) */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col md:hidden shadow-xl transition-transform duration-200 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <SidebarContent onClose={() => setSidebarOpen(false)} />
@@ -306,7 +360,6 @@ export function AdminLayout({ children }: DashboardLayoutProps) {
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-
         {/* Topbar */}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[#00216b]/[0.08] bg-white/90 backdrop-blur-sm px-4 shrink-0">
           <button
@@ -320,7 +373,9 @@ export function AdminLayout({ children }: DashboardLayoutProps) {
           <nav className="flex items-center gap-1.5 text-[13px] min-w-0">
             <span className="font-medium text-slate-400">Wundu</span>
             <span className="text-slate-300">/</span>
-            <span className="font-medium text-slate-700 truncate">{currentTitle}</span>
+            <span className="font-medium text-slate-700 truncate">
+              {currentTitle}
+            </span>
           </nav>
 
           <div className="ml-auto flex items-center gap-1">
@@ -337,10 +392,7 @@ export function AdminLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
-
+        <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   );
