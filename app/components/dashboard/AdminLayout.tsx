@@ -170,6 +170,9 @@ function SidebarContent({
                 alt="Wundu"
                 className="h-7 w-auto shrink-0"
               />
+              <span className="text-[9px] font-medium tracking-[0.1em] uppercase bg-[#00216b]/[0.08] text-[#00216b]/60 px-1.5 py-0.5 rounded-sm shrink-0 select-none">
+                admin
+              </span>
             </div>
             {/* Desktop: collapse chevron */}
             {onToggleCollapse && (
