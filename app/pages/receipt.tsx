@@ -36,7 +36,8 @@ const ReceiptsPage: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [page, setPage] = useState(0);
 
-  const { data: slot, isLoading: loading } = useTransactionsList('INCOME', page);
+  const { data: slot, isLoading, isFetching } = useTransactionsList('INCOME', page);
+  const loading = isLoading || isFetching;
   const apiReceipts: AdminTransactionSummary[] = slot?.content ?? [];
   const totalElements = slot?.totalElements ?? 0;
   const totalPages = slot?.totalPages ?? 0;
@@ -69,8 +70,8 @@ const ReceiptsPage: React.FC = () => {
 
   const filteredReceipts = useMemo(() => {
     return detailedReceipts.filter(r => {
-      const matchesSearch = r.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === '' || r.category === selectedCategory;
+      const matchesSearch = (r.description ?? '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === '' || (r.category ?? '') === selectedCategory;
       const txDate = new Date(r.date.split('/').reverse().join('-'));
       const matchesDate = (!startDate || txDate >= new Date(startDate)) && (!endDate || txDate <= new Date(endDate));
       return matchesSearch && matchesCategory && matchesDate;

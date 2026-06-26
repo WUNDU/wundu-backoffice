@@ -38,7 +38,8 @@ const TransactionsPage: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [page, setPage] = useState(0);
 
-  const { data: slot, isLoading: loading } = useTransactionsList('', page);
+  const { data: slot, isLoading, isFetching } = useTransactionsList('', page);
+  const loading = isLoading || isFetching;
   const apiTransactions = slot?.content ?? [];
   const totalElements = slot?.totalElements ?? 0;
   const totalPages = slot?.totalPages ?? 0;
@@ -58,9 +59,9 @@ const TransactionsPage: React.FC = () => {
 
   const filteredTransactions = useMemo(() => {
     return mappedTransactions.filter(transaction => {
-      const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (transaction.description ?? '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = selectedType === '' || transaction.type === selectedType.toLowerCase();
-      const matchesCategory = selectedCategory === '' || transaction.category === selectedCategory;
+      const matchesCategory = selectedCategory === '' || (transaction.category ?? '') === selectedCategory;
       const txDate = new Date(transaction.date.split('/').reverse().join('-'));
       const matchesDate = (!startDate || txDate >= new Date(startDate)) && (!endDate || txDate <= new Date(endDate));
       return matchesSearch && matchesType && matchesCategory && matchesDate;
@@ -73,11 +74,14 @@ const TransactionsPage: React.FC = () => {
   const hasActiveFilter = !!(searchTerm || selectedType || selectedCategory || startDate || endDate);
   const numberOfTransactions = hasActiveFilter ? filteredTransactions.length : totalElements;
 
-  const uniqueCategories = useMemo(() => Array.from(new Set(mappedTransactions.map(t => t.category))), [mappedTransactions]);
+  const uniqueCategories = useMemo(() => Array.from(new Set(mappedTransactions.map(t => t.category).filter(Boolean))), [mappedTransactions]);
 
   const filteredCategoryData = useMemo(() => {
     const map: Record<string, number> = {};
-    filteredTransactions.forEach(t => { map[t.category] = (map[t.category] || 0) + Math.abs(t.amount); });
+    filteredTransactions.forEach(t => {
+      const cat = t.category ?? 'Outro';
+      map[cat] = (map[cat] || 0) + Math.abs(t.amount);
+    });
     let ci = 0;
     return Object.keys(map).map(cat => ({
       name: cat,

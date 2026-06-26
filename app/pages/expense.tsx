@@ -36,7 +36,8 @@ const ExpensesPage: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [page, setPage] = useState(0);
 
-  const { data: slot, isLoading: loading } = useTransactionsList('EXPENSE', page);
+  const { data: slot, isLoading, isFetching } = useTransactionsList('EXPENSE', page);
+  const loading = isLoading || isFetching;
   const apiExpenses: AdminTransactionSummary[] = slot?.content ?? [];
   const totalElements = slot?.totalElements ?? 0;
   const totalPages = slot?.totalPages ?? 0;
@@ -70,8 +71,8 @@ const ExpensesPage: React.FC = () => {
 
   const filteredExpenses = useMemo(() => {
     return detailedExpenses.filter(e => {
-      const matchesSearch = e.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === '' || e.category === selectedCategory;
+      const matchesSearch = (e.description ?? '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === '' || (e.category ?? '') === selectedCategory;
       const txDate = new Date(e.date.split('/').reverse().join('-'));
       const matchesDate = (!startDate || txDate >= new Date(startDate)) && (!endDate || txDate <= new Date(endDate));
       return matchesSearch && matchesCategory && matchesDate;
