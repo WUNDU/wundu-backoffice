@@ -1,49 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import type { AdminCategory } from '~/types/admin';
-import { useAdminCategoriesStore } from '~/store/admin-categories-store';
+import { useCategoriesList, useCreateCategory, useUpdateCategory, useDeleteCategory } from '~/hooks/use-categories-query';
 import { Pagination } from '~/components/ui/Pagination';
 
 const PAGE_SIZE = 20;
 
 const CategoriesPage: React.FC = () => {
-  const {
-    items: categories,
-    totalElements,
-    totalPages,
-    isLoading: loading,
-    fetch: fetchCategories,
-    refresh: refreshCategories,
-    create: createCategory,
-    update: updateCategory,
-    remove: removeCategory,
-  } = useAdminCategoriesStore();
-
   const [page, setPage] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminCategory | null>(null);
   const [form, setForm] = useState({ name: '', type: 'EXPENSE' });
 
-  useEffect(() => { fetchCategories(); }, [fetchCategories]);
+  const { data: categoriesPage, isLoading: loading } = useCategoriesList(page);
+  const createCategory = useCreateCategory();
+  const updateCategory = useUpdateCategory();
+  const removeCategory = useDeleteCategory();
 
-  const handlePageChange = (p: number) => { setPage(p); refreshCategories(p); };
+  const categories = categoriesPage?.content ?? [];
+  const totalElements = categoriesPage?.totalElements ?? 0;
+  const totalPages = categoriesPage?.totalPages ?? 0;
+
+  const handlePageChange = (p: number) => { setPage(p); };
 
   const openCreate = () => { setEditing(null); setForm({ name: '', type: 'EXPENSE' }); setShowModal(true); };
   const openEdit = (c: AdminCategory) => { setEditing(c); setForm({ name: c.name, type: c.type }); setShowModal(true); };
 
   const handleSave = async () => {
     if (editing) {
-      await updateCategory(editing.id, form);
+      await updateCategory.mutateAsync({ id: editing.id, body: form });
     } else {
-      await createCategory(form);
+      await createCategory.mutateAsync(form);
     }
     setShowModal(false);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Eliminar categoria?')) return;
-    await removeCategory(id);
+    await removeCategory.mutateAsync(id);
   };
 
   return (

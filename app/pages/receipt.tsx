@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   TrendingUp,
   Filter,
@@ -13,7 +13,7 @@ import { ChartCard } from '~/components/dashboard/ChartCard';
 import { PieChartCard } from '~/components/dashboard/PieChartCard';
 import { ReceiptItem } from '~/components/dashboard/ReceiptItem';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
-import { useAdminTransactionsStore } from '~/store/admin-transactions-store';
+import { useTransactionsList } from '~/hooks/use-transactions-query';
 import type { AdminTransactionSummary } from '~/types/admin';
 
 function parseJavaDate(d: unknown): Date {
@@ -30,10 +30,8 @@ const ReceiptsPage: React.FC = () => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
-  const { income: slot, isLoading: loading, fetch: fetchTx } = useAdminTransactionsStore();
-  const apiReceipts: AdminTransactionSummary[] = slot.items;
-
-  useEffect(() => { fetchTx('INCOME', 0); }, [fetchTx]);
+  const { data: slot, isLoading: loading } = useTransactionsList('INCOME', 0);
+  const apiReceipts: AdminTransactionSummary[] = slot?.content ?? [];
 
   const detailedReceipts = useMemo(() => apiReceipts.map(tx => ({
     id: tx.id,

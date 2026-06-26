@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   TrendingDown,
   Filter,
@@ -13,7 +13,7 @@ import { ChartCard } from '~/components/dashboard/ChartCard';
 import { PieChartCard } from '~/components/dashboard/PieChartCard';
 import { ExpenseItem } from '~/components/dashboard/ExpenseItem';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
-import { useAdminTransactionsStore } from '~/store/admin-transactions-store';
+import { useTransactionsList } from '~/hooks/use-transactions-query';
 import type { AdminTransactionSummary } from '~/types/admin';
 import { Pagination } from '~/components/ui/Pagination';
 
@@ -42,14 +42,12 @@ const ExpensesPage: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [page, setPage] = useState(0);
 
-  const { expense: slot, isLoading: loading, fetch: fetchTx, refresh: refreshTx } = useAdminTransactionsStore();
-  const apiExpenses: AdminTransactionSummary[] = slot.items;
-  const totalElements = slot.totalElements;
-  const totalPages = slot.totalPages;
+  const { data: slot, isLoading: loading } = useTransactionsList('EXPENSE', page);
+  const apiExpenses: AdminTransactionSummary[] = slot?.content ?? [];
+  const totalElements = slot?.totalElements ?? 0;
+  const totalPages = slot?.totalPages ?? 0;
 
-  useEffect(() => { fetchTx('EXPENSE', 0); }, [fetchTx]);
-
-  const handlePageChange = (p: number) => { setPage(p); refreshTx('EXPENSE', p); };
+  const handlePageChange = (p: number) => { setPage(p); };
 
   const detailedExpenses = useMemo(() => apiExpenses.map(tx => ({
     id: tx.id,

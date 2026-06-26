@@ -1,33 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Target, Trash2 } from 'lucide-react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
-import { useAdminGoalsStore } from '~/store/admin-goals-store';
+import { useGoalsList, useGoalStats, useDeleteGoal } from '~/hooks/use-goals-query';
 import { Pagination } from '~/components/ui/Pagination';
 
 const GoalsPage: React.FC = () => {
-  const {
-    items: goals,
-    totalElements,
-    totalPages,
-    stats,
-    isLoading: loading,
-    fetch: fetchGoals,
-    refresh: refreshGoals,
-    remove,
-  } = useAdminGoalsStore();
-
   const [page, setPage] = useState(0);
 
-  useEffect(() => { fetchGoals(); }, [fetchGoals]);
+  const { data: goalsPage, isLoading: loading } = useGoalsList(page);
+  const { data: stats } = useGoalStats();
+  const deleteGoal = useDeleteGoal();
 
-  const handlePageChange = (p: number) => { setPage(p); refreshGoals(p); };
+  const goals = goalsPage?.content ?? [];
+  const totalElements = goalsPage?.totalElements ?? 0;
+  const totalPages = goalsPage?.totalPages ?? 0;
+
+  const handlePageChange = (p: number) => { setPage(p); };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Eliminar meta?')) return;
-    try {
-      await import('~/services/admin/goals.service').then(({ goalsService }) => goalsService.delete(id));
-      remove(id);
-    } catch (e) { console.error(e); }
+    await deleteGoal.mutateAsync(id);
   };
 
   const statusLabel = (s: string) => ({ ACTIVE: 'Ativa', DONE: 'Concluída', ARCHIVED: 'Arquivada' }[s] || s);

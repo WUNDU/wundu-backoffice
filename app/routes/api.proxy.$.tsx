@@ -40,11 +40,21 @@ async function proxyRequest(request: Request, params: { "*": string }) {
 
   const responseBody = await backendRes.text();
 
+  const responseHeaders = new Headers({
+    "Content-Type": backendRes.headers.get("content-type") ?? "application/json",
+  });
+
+  // Forward Set-Cookie so the browser receives the refresh_token HttpOnly cookie
+  // on login and on each token rotation — without this the cookie is silently dropped
+  // and silent refresh (initializeAuth) always fails after a page reload
+  const setCookie = backendRes.headers.get("set-cookie");
+  if (setCookie) {
+    responseHeaders.set("Set-Cookie", setCookie);
+  }
+
   return new Response(responseBody || null, {
     status: backendRes.status,
-    headers: {
-      "Content-Type": backendRes.headers.get("content-type") ?? "application/json",
-    },
+    headers: responseHeaders,
   });
 }
 

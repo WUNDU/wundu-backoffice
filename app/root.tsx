@@ -9,10 +9,13 @@ import {
 } from "@remix-run/react";
 import type { LinksFunction } from "@remix-run/node";
 import React, { useEffect } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import "./tailwind.css";
 import { Toaster } from "sonner";
 import { useAuthStore } from "~/store/auth-store";
+import { queryClient } from "~/lib/query-client";
 
 export const links: LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -76,5 +79,23 @@ export default function App() {
     }
   }, [isAuthenticated, isLoading, location.pathname, navigate]);
 
-  return <Outlet />;
+  // One-time cleanup of old Zustand localStorage caches (post-RQ migration)
+  useEffect(() => {
+    [
+      "wundu-admin-dashboard-cache",
+      "wundu-admin-users-cache",
+      "wundu-admin-transactions-cache",
+      "wundu-admin-goals-cache",
+      "wundu-admin-categories-cache",
+    ].forEach((k) => localStorage.removeItem(k));
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Outlet />
+      {process.env.NODE_ENV === "development" && (
+        <ReactQueryDevtools initialIsOpen={false} />
+      )}
+    </QueryClientProvider>
+  );
 }

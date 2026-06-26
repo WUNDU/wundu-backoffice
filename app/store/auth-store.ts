@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { authService } from "~/services/auth.service";
 import { setAuthHandlers } from "~/lib/api";
+import { queryClient } from "~/lib/query-client";
 import type { AdminProfile } from "~/services/auth.service";
 
 // Shared init promise — prevents initializeAuth and refreshToken from racing
@@ -78,9 +79,14 @@ export const useAuthStore = create<AuthState>()(
       },
 
       // Called by axios interceptor on 401 — waits for initializeAuth if in progress
-      // to avoid competing for the same single-use refresh token
+      // to avoid competing for the same single-use refresh token.
+      // If initializeAuth is running and we already have a token in memory (set before
+      // checkAuthStatus), return it immediately — avoids a deadlock where checkAuthStatus
+      // triggers a 401 that awaits _initPromise which is waiting for checkAuthStatus.
       refreshToken: async () => {
         if (_initPromise) {
+          const { token: existing } = get();
+          if (existing) return existing;
           await _initPromise;
           const { token } = get();
           if (token) return token;
@@ -137,12 +143,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         authService.logoutApi().catch(() => {});
         set({ token: null, isAuthenticated: false, isLoading: false, error: null, user: null });
-        // Clear all persisted data caches on logout
-        import("~/store/admin-dashboard-store").then(({ useAdminDashboardStore }) => useAdminDashboardStore.getState().clearAll());
-        import("~/store/admin-categories-store").then(({ useAdminCategoriesStore }) => useAdminCategoriesStore.getState().clearAll());
-        import("~/store/admin-transactions-store").then(({ useAdminTransactionsStore }) => useAdminTransactionsStore.getState().clearAll());
-        import("~/store/admin-users-store").then(({ useAdminUsersStore }) => useAdminUsersStore.getState().clearAll());
-        import("~/store/admin-goals-store").then(({ useAdminGoalsStore }) => useAdminGoalsStore.getState().clearAll());
+        queryClient.clear();
         if (typeof window !== "undefined") {
           window.location.href = "/login";
         }

@@ -1,26 +1,23 @@
 // AccessManagementPage.tsx
 import { Users, ShieldCheck, Trash2, Search, RefreshCw } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
-import { useAdminUsersStore } from '~/store/admin-users-store';
+import { useUsersList, useAdminsList, useDeactivateUser, useRevokeAdmin } from '~/hooks/use-users-query';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '~/lib/query-keys';
 import type { AdminUserSummary, AdminSummary } from '~/types/admin';
 
 
 export default function AccessManagementPage() {
   const [activeTab, setActiveTab] = useState('users');
   const [searchTerm, setSearchTerm] = useState('');
+  const qc = useQueryClient();
 
-  const {
-    users,
-    admins,
-    isLoading: loading,
-    fetch: fetchUsers,
-    refresh: refreshUsers,
-    deactivateUser,
-    revokeAdmin,
-  } = useAdminUsersStore();
-
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  const { data: users = [], isLoading: usersLoading } = useUsersList();
+  const { data: admins = [], isLoading: adminsLoading } = useAdminsList();
+  const loading = usersLoading || adminsLoading;
+  const deactivateUser = useDeactivateUser();
+  const revokeAdmin = useRevokeAdmin();
 
   const filteredUsers = users.filter((u: AdminUserSummary) =>
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -34,12 +31,12 @@ export default function AccessManagementPage() {
 
   const handleDeactivateUser = async (id: string) => {
     if (!window.confirm('Desativar este utilizador?')) return;
-    await deactivateUser(id);
+    await deactivateUser.mutateAsync(id);
   };
 
   const handleRevokeAdmin = async (id: string) => {
     if (!window.confirm('Revogar privilégios de admin?')) return;
-    await revokeAdmin(id);
+    await revokeAdmin.mutateAsync(id);
   };
 
   return (
@@ -75,7 +72,7 @@ export default function AccessManagementPage() {
             />
             <Search size={16} className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
-          <button className="flex items-center px-4 py-2 bg-[#00216b] text-white rounded-lg hover:bg-[#003cc3] transition-colors duration-200" onClick={() => refreshUsers()}>
+          <button className="flex items-center px-4 py-2 bg-[#00216b] text-white rounded-lg hover:bg-[#003cc3] transition-colors duration-200" onClick={() => qc.invalidateQueries({ queryKey: queryKeys.users.all })}>
             <RefreshCw size={16} className="mr-2" />
             <span>Atualizar</span>
           </button>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   DollarSign,
   List,
@@ -13,7 +13,7 @@ import { ChartCard } from '~/components/dashboard/ChartCard';
 import { PieChartCard } from '~/components/dashboard/PieChartCard';
 import { TransactionItem } from '~/components/dashboard/TransactionItem';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
-import { useAdminTransactionsStore } from '~/store/admin-transactions-store';
+import { useTransactionsList } from '~/hooks/use-transactions-query';
 import { Pagination } from '~/components/ui/Pagination';
 
 function parseJavaDate(d: unknown): Date {
@@ -42,14 +42,12 @@ const TransactionsPage: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [page, setPage] = useState(0);
 
-  const { all: slot, isLoading: loading, fetch: fetchTx, refresh: refreshTx } = useAdminTransactionsStore();
-  const apiTransactions = slot.items;
-  const totalElements = slot.totalElements;
-  const totalPages = slot.totalPages;
+  const { data: slot, isLoading: loading } = useTransactionsList('', page);
+  const apiTransactions = slot?.content ?? [];
+  const totalElements = slot?.totalElements ?? 0;
+  const totalPages = slot?.totalPages ?? 0;
 
-  useEffect(() => { fetchTx('', 0); }, [fetchTx]);
-
-  const handlePageChange = (p: number) => { setPage(p); refreshTx('', p); };
+  const handlePageChange = (p: number) => { setPage(p); };
 
   const mappedTransactions = useMemo(() => apiTransactions.map((tx) => ({
     id: tx.id,

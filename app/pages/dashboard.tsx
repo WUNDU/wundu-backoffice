@@ -14,7 +14,7 @@ import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { Card } from '~/components/dashboard/Card';
 import { ChartCard } from '~/components/dashboard/ChartCard';
 import { TransactionItem } from '~/components/dashboard/TransactionItem';
-import { useAdminDashboardStore } from '~/store/admin-dashboard-store';
+import { useDashboardStats, useDashboardGrowth, useDashboardRecentTransactions } from '~/hooks/use-dashboard-query';
 
 function parseJavaDate(d: unknown): Date {
   if (Array.isArray(d)) {
@@ -95,9 +95,10 @@ const GeoDistributionBar: React.FC<GeoDistributionBarProps> = ({ region, totalUs
 
 export default function AdminDashboard() {
   const [period, setPeriod] = useState('month');
-  const { stats, growthData, recentTransactions, isLoading: loading, fetch } = useAdminDashboardStore();
-
-  useEffect(() => { fetch(); }, [fetch]);
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: growthData = [], isLoading: growthLoading } = useDashboardGrowth();
+  const { data: recentTransactions = [], isLoading: txLoading } = useDashboardRecentTransactions();
+  const loading = statsLoading || growthLoading || txLoading;
 
   const chartGrowthData = growthData.map((p) => ({
     month: new Date(p.date).toLocaleString('pt-BR', { month: 'short' }),
