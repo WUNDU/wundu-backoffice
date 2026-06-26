@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Users,
   UserPlus,
@@ -7,7 +7,7 @@ import {
   ChevronRight,
   Info,
   Activity,
-  MapPin
+  Inbox,
 } from 'lucide-react';
 import { Link } from '@remix-run/react';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
@@ -15,6 +15,8 @@ import { Card } from '~/components/dashboard/Card';
 import { ChartCard } from '~/components/dashboard/ChartCard';
 import { TransactionItem } from '~/components/dashboard/TransactionItem';
 import { useDashboardStats, useDashboardGrowth, useDashboardRecentTransactions } from '~/hooks/use-dashboard-query';
+import { SkeletonCards, SkeletonRows, SkeletonChart } from '~/components/ui/Skeleton';
+import { EmptyState } from '~/components/ui/EmptyState';
 
 function parseJavaDate(d: unknown): Date {
   if (Array.isArray(d)) {
@@ -25,76 +27,7 @@ function parseJavaDate(d: unknown): Date {
 }
 
 
-// New component to handle individual geographical distribution bars with animation
-interface GeoDistributionBarProps {
-  region: {
-    region: string;
-    users: number;
-  };
-  totalUsers: number;
-  index: number;
-}
-
-const GeoDistributionBar: React.FC<GeoDistributionBarProps> = ({ region, totalUsers, index }) => {
-  const [animatedWidth, setAnimatedWidth] = useState(0);
-  // Ensure totalUsers is not zero to prevent division by zero, which results in NaN or Infinity
-  const targetWidth = totalUsers > 0 ? (region.users / totalUsers) * 100 : 0;
-
-  useEffect(() => {
-    // Reset animatedWidth to 0 before starting new animation
-    setAnimatedWidth(0);
-
-    let animationFrameId: number;
-    let startTime: number | null = null;
-    const duration = 1000; // 1 second animation
-
-    const animateBar = (currentTime: number) => {
-      if (!startTime) startTime = currentTime;
-      const progress = (currentTime - startTime) / duration;
-      const currentWidth = Math.min(progress, 1) * targetWidth;
-      setAnimatedWidth(currentWidth);
-
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(animateBar);
-      }
-    };
-
-    // Start animation after a small delay to ensure DOM is ready
-    const timer = setTimeout(() => {
-      animationFrameId = requestAnimationFrame(animateBar);
-    }, 100 * index); // Stagger animation for each bar
-
-    return () => {
-      clearTimeout(timer);
-      cancelAnimationFrame(animationFrameId);
-      setAnimatedWidth(0); // Reset on unmount
-    };
-  }, [targetWidth, index, region.region, region.users, totalUsers]);
-
-  return (
-    <div className="flex items-center">
-      <div className="w-32 text-sm text-gray-700">{region.region}</div>
-      <div className="flex-1">
-        <div className="relative h-4 w-full bg-gray-200 rounded-full overflow-hidden">
-          <div
-            className="absolute top-0 left-0 h-full bg-primary transition-all duration-1000 ease-out"
-            style={{ width: `${animatedWidth}%` }}
-          ></div>
-        </div>
-      </div>
-      <div className="w-24 text-right text-sm font-medium text-gray-700">
-        {region.users.toLocaleString()}
-        <span className="text-xs text-gray-500 ml-1">
-          ({totalUsers > 0 ? ((region.users / totalUsers) * 100).toFixed(1) : '0.0'}%)
-        </span>
-      </div>
-    </div>
-  );
-};
-
-
 export default function AdminDashboard() {
-  const [period, setPeriod] = useState('month');
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: growthData = [], isLoading: growthLoading } = useDashboardGrowth();
   const { data: recentTransactions = [], isLoading: txLoading } = useDashboardRecentTransactions();
@@ -121,8 +54,6 @@ export default function AdminDashboard() {
     type: (tx.type === 'INCOME' ? 'income' : 'expense') as 'income' | 'expense',
   }));
 
-  const geoDistributionData: Array<{ region: string; users: number }> = [];
-
   return (
     <AdminLayout>
       {/* Page Header */}
@@ -131,51 +62,29 @@ export default function AdminDashboard() {
           <h1 className="text-[22px] font-semibold tracking-tight text-gray-900">Painel Administrativo</h1>
           <p className="mt-0.5 text-[13px] text-gray-500">Visão geral do sistema e métricas principais</p>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            className="h-8 rounded-md border border-gray-200 bg-white px-3 text-[12px] text-gray-700 focus:outline-none focus:border-[#003cc3] cursor-pointer"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-          >
-            <option value="today">Hoje</option>
-            <option value="week">Esta Semana</option>
-            <option value="month">Este Mês</option>
-            <option value="quarter">Este Trimestre</option>
-            <option value="year">Este Ano</option>
-          </select>
-          <button className="h-8 flex items-center gap-1.5 px-3 bg-[#00216b] hover:bg-[#003cc3] text-white text-[12px] font-medium rounded-md transition-colors">
-            <Bell size={13} />
-            Visualizar Alertas
-          </button>
-        </div>
+        <button className="h-8 flex items-center gap-1.5 px-3 bg-[#00216b] hover:bg-[#003cc3] text-white text-[12px] font-medium rounded-md transition-colors">
+          <Bell size={13} />
+          Visualizar Alertas
+        </button>
       </div>
 
       <div className="px-6 py-5 space-y-5">
         {/* KPIs */}
-        {(() => {
-          const total = stats?.totalUsers ?? 0;
-          const pctTotalUsers = total > 0
-            ? Math.round(((stats?.newUsersLast30Days ?? 0) / total) * 100)
-            : 0;
-          const pctNewUsers = total > 0
-            ? Math.round(((stats?.kycApprovedUsers ?? 0) / total) * 100)
-            : 0;
-          const incomeExpenseSum = (stats?.totalIncome ?? 0) + (stats?.totalExpenses ?? 0);
-          const pctTransactions = incomeExpenseSum > 0
-            ? Math.round((((stats?.totalIncome ?? 0) - (stats?.totalExpenses ?? 0)) / incomeExpenseSum) * 100)
-            : 0;
-          const pctSessions = total > 0
-            ? Math.round(((stats?.activeSessions ?? 0) / total) * 100)
-            : 0;
-          return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card title="Total de Usuários" value={loading ? 0 : total} icon={Users} trend percentage={pctTotalUsers} color="primary" isCurrency={false} />
-              <Card title="Novos Usuários (Mês)" value={loading ? 0 : (stats?.newUsersLast30Days ?? 0)} icon={UserPlus} trend percentage={pctNewUsers} color="success" isCurrency={false} />
-              <Card title="Transações (Mês)" value={loading ? 0 : (stats?.totalTransactions ?? 0)} icon={Activity} trend percentage={pctTransactions} color="secondary" isCurrency={false} />
-              <Card title="Tickets de Suporte" value={loading ? 0 : (stats?.activeSessions ?? 0)} icon={Bell} trend percentage={pctSessions} color="danger" isCurrency={false} />
-            </div>
-          );
-        })()}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {loading ? <SkeletonCards count={4} /> : (() => {
+            const total = stats?.totalUsers ?? 0;
+            const pctTotalUsers = total > 0 ? Math.round(((stats?.newUsersLast30Days ?? 0) / total) * 100) : 0;
+            const pctSessions = total > 0 ? Math.round(((stats?.activeSessions ?? 0) / total) * 100) : 0;
+            return (
+              <>
+                <Card title="Total de Usuários" value={total} icon={Users} trend percentage={pctTotalUsers} color="primary" isCurrency={false} />
+                <Card title="Novos Usuários (Mês)" value={stats?.newUsersLast30Days ?? 0} icon={UserPlus} color="success" isCurrency={false} />
+                <Card title="Transações (Mês)" value={stats?.totalTransactions ?? 0} icon={Activity} color="secondary" isCurrency={false} />
+                <Card title="Tickets de Suporte" value={stats?.activeSessions ?? 0} icon={Bell} trend percentage={pctSessions} color="danger" isCurrency={false} />
+              </>
+            );
+          })()}
+        </div>
 
         {/* Estatísticas de Usuários */}
         <div className="rounded-md border border-gray-200 bg-white">
@@ -205,39 +114,30 @@ export default function AdminDashboard() {
 
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <ChartCard
-            title="Crescimento de Usuários"
-            chartData={chartGrowthData.length > 0 ? chartGrowthData : [{ month: '...', users: 0 }]}
-            dataKey="users"
-            color="#003cc3"
-            isCurrencyChart={false}
-          />
-          <ChartCard
-            title="Receitas vs Despesas"
-            chartData={txChartData.length > 0 ? txChartData : [{ month: '...', receita: 0, despesa: 0 }]}
-            dataKey={['receita', 'despesa']}
-            color="#00216b"
-            isCurrencyChart={true}
-          />
+          {loading ? (
+            <>
+              <SkeletonChart />
+              <SkeletonChart />
+            </>
+          ) : (
+            <>
+              <ChartCard
+                title="Crescimento de Usuários"
+                chartData={chartGrowthData.length > 0 ? chartGrowthData : [{ month: '...', users: 0 }]}
+                dataKey="users"
+                color="#003cc3"
+                isCurrencyChart={false}
+              />
+              <ChartCard
+                title="Receitas vs Despesas"
+                chartData={txChartData.length > 0 ? txChartData : [{ month: '...', receita: 0, despesa: 0 }]}
+                dataKey={['receita', 'despesa']}
+                color="#00216b"
+                isCurrencyChart={true}
+              />
+            </>
+          )}
         </div>
-
-        {/* Distribuição Geográfica */}
-        {geoDistributionData.length > 0 && (
-          <div className="rounded-md border border-gray-200 bg-white">
-            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-              <h3 className="text-[13px] font-semibold text-gray-900">Distribuição Geográfica</h3>
-              <div className="flex items-center gap-1 text-[11px] text-gray-400">
-                <MapPin size={11} />
-                Por região
-              </div>
-            </div>
-            <div className="p-4 space-y-3">
-              {geoDistributionData.map((region, i) => (
-                <GeoDistributionBar key={i} region={region} totalUsers={stats?.totalUsers ?? 0} index={i} />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Transações + Alertas */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -249,9 +149,15 @@ export default function AdminDashboard() {
               </Link>
             </div>
             <div className="px-4 py-2">
-              {mappedTransactions.map(transaction => (
-                <TransactionItem key={transaction.id} transaction={transaction} />
-              ))}
+              {loading ? (
+                <SkeletonRows count={5} />
+              ) : mappedTransactions.length > 0 ? (
+                mappedTransactions.map(transaction => (
+                  <TransactionItem key={transaction.id} transaction={transaction} />
+                ))
+              ) : (
+                <EmptyState icon={Inbox} title="Sem transações recentes" />
+              )}
             </div>
           </div>
 

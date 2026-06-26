@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   DollarSign,
   List,
@@ -6,7 +6,8 @@ import {
   Search,
   ChevronDown,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  SearchX,
 } from 'lucide-react';
 import { Card } from '~/components/dashboard/Card';
 import { ChartCard } from '~/components/dashboard/ChartCard';
@@ -15,6 +16,9 @@ import { TransactionItem } from '~/components/dashboard/TransactionItem';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { useTransactionsList } from '~/hooks/use-transactions-query';
 import { Pagination } from '~/components/ui/Pagination';
+import { SkeletonCards, SkeletonRows } from '~/components/ui/Skeleton';
+import { EmptyState } from '~/components/ui/EmptyState';
+import { PAGE_SIZE, CHART_COLORS_EXTENDED } from '~/lib/constants';
 
 function parseJavaDate(d: unknown): Date {
   if (d == null) return new Date(0);
@@ -26,18 +30,10 @@ function parseJavaDate(d: unknown): Date {
   return isNaN(dt.getTime()) ? new Date(0) : dt;
 }
 
-const PAGE_SIZE = 50;
-
-/**
- * TransactionsPage Component
- * This page displays an overview of financial transactions, including summary cards,
- * interactive charts for income/expense trends and category distribution,
- * a list of recent transactions, and filtering/adding functionalities.
- * It's designed to be visually appealing with animations and a responsive layout.
- */
 const TransactionsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedType, setSelectedType] = useState<'' | 'INCOME' | 'EXPENSE'>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [page, setPage] = useState(0);
@@ -48,6 +44,8 @@ const TransactionsPage: React.FC = () => {
   const totalPages = slot?.totalPages ?? 0;
 
   const handlePageChange = (p: number) => { setPage(p); };
+
+  useEffect(() => { setPage(0); }, [searchTerm, selectedType, selectedCategory, startDate, endDate]);
 
   const mappedTransactions = useMemo(() => apiTransactions.map((tx) => ({
     id: tx.id,
@@ -62,28 +60,29 @@ const TransactionsPage: React.FC = () => {
     return mappedTransactions.filter(transaction => {
       const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = selectedType === '' || transaction.type === selectedType.toLowerCase();
+      const matchesCategory = selectedCategory === '' || transaction.category === selectedCategory;
       const txDate = new Date(transaction.date.split('/').reverse().join('-'));
       const matchesDate = (!startDate || txDate >= new Date(startDate)) && (!endDate || txDate <= new Date(endDate));
-      return matchesSearch && matchesType && matchesDate;
+      return matchesSearch && matchesType && matchesCategory && matchesDate;
     });
-  }, [mappedTransactions, searchTerm, selectedType, startDate, endDate]);
+  }, [mappedTransactions, searchTerm, selectedType, selectedCategory, startDate, endDate]);
 
   const totalIncome = useMemo(() => filteredTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0), [filteredTransactions]);
   const totalExpenses = useMemo(() => filteredTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0), [filteredTransactions]);
   const netBalance = totalIncome - totalExpenses;
-  const numberOfTransactions = totalElements || filteredTransactions.length;
+  const hasActiveFilter = !!(searchTerm || selectedType || selectedCategory || startDate || endDate);
+  const numberOfTransactions = hasActiveFilter ? filteredTransactions.length : totalElements;
 
   const uniqueCategories = useMemo(() => Array.from(new Set(mappedTransactions.map(t => t.category))), [mappedTransactions]);
 
   const filteredCategoryData = useMemo(() => {
     const map: Record<string, number> = {};
     filteredTransactions.forEach(t => { map[t.category] = (map[t.category] || 0) + Math.abs(t.amount); });
-    const colors = ['#4CAF50', '#FFC107', '#2196F3', '#9C27B0', '#FF5722', '#00BCD4', '#8BC34A', '#FF9800', '#673AB7', '#E91E63'];
     let ci = 0;
     return Object.keys(map).map(cat => ({
       name: cat,
       value: map[cat],
-      color: colors[ci++ % colors.length],
+      color: CHART_COLORS_EXTENDED[ci++ % CHART_COLORS_EXTENDED.length],
     }));
   }, [filteredTransactions]);
 
@@ -108,47 +107,20 @@ const TransactionsPage: React.FC = () => {
         </div>
 
         {/* Summary Cards */}
-        {(() => {
-          const volSum = totalIncome + totalExpenses;
-          const pctIncome = volSum > 0 ? Math.round((totalIncome / volSum) * 100) : 0;
-          const pctExpenses = volSum > 0 ? -Math.round((totalExpenses / volSum) * 100) : 0;
-          const pctBalance = volSum > 0 ? Math.round(((totalIncome - totalExpenses) / volSum) * 100) : 0;
-          return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card
-                title="Total de Receitas"
-                value={totalIncome}
-                icon={TrendingUp}
-                color="success"
-                trend={true}
-                percentage={pctIncome}
-              />
-              <Card
-                title="Total de Despesas"
-                value={totalExpenses}
-                icon={TrendingDown}
-                color="danger"
-                trend={true}
-                percentage={pctExpenses}
-              />
-              <Card
-                title="Balanço Líquido"
-                value={netBalance}
-                icon={DollarSign}
-                color={netBalance >= 0 ? 'primary' : 'danger'}
-                trend={true}
-                percentage={pctBalance}
-              />
-              <Card
-                title="Nº de Transações"
-                value={numberOfTransactions}
-                icon={List}
-                color="secondary"
-                isCurrency={false}
-              />
-            </div>
-          );
-        })()}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {loading ? <SkeletonCards count={4} /> : (() => {
+            const volSum = totalIncome + totalExpenses;
+            const pctBalance = volSum > 0 ? Math.round(((totalIncome - totalExpenses) / volSum) * 100) : 0;
+            return (
+              <>
+                <Card title="Total de Receitas" value={totalIncome} icon={TrendingUp} color="success" />
+                <Card title="Total de Despesas" value={totalExpenses} icon={TrendingDown} color="danger" />
+                <Card title="Balanço Líquido" value={netBalance} icon={DollarSign} color={netBalance >= 0 ? 'primary' : 'danger'} trend={true} percentage={pctBalance} />
+                <Card title="Nº de Transações" value={numberOfTransactions} icon={List} color="secondary" isCurrency={false} />
+              </>
+            );
+          })()}
+        </div>
 
         {/* Filters Section */}
         <div className="rounded-md border border-gray-200 bg-white p-6">
@@ -186,8 +158,8 @@ const TransactionsPage: React.FC = () => {
             <div className="relative">
               <select
                 className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:border-[#003cc3] focus:ring-[#003cc3]/20 transition-all duration-200"
-                value=""
-                onChange={() => {}}
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
               >
                 <option value="">Todas as Categorias</option>
                 {uniqueCategories.map(category => (
@@ -239,19 +211,24 @@ const TransactionsPage: React.FC = () => {
         {/* Recent Transactions Section */}
         <div className="rounded-md border border-gray-200 bg-white p-6">
           <h3 className="text-[15px] font-semibold text-gray-900 mb-4">Transações Recentes</h3>
-          <div className="overflow-x-auto">
-            <div className="min-w-[600px]"> {/* Ensure minimum width for table-like display */}
-              {loading ? (
-                <p className="text-center text-gray-500 py-8">A carregar...</p>
-              ) : filteredTransactions.length > 0 ? (
-                filteredTransactions.map((transaction) => (
-                  <TransactionItem key={transaction.id} transaction={transaction} />
-                ))
-              ) : (
-                <p className="text-center text-gray-500 py-8">Nenhuma transação encontrada com os filtros aplicados.</p>
-              )}
-            </div>
-          </div>
+          {loading ? (
+            <SkeletonRows count={6} />
+          ) : filteredTransactions.length > 0 ? (
+            filteredTransactions.map((transaction) => (
+              <TransactionItem key={transaction.id} transaction={transaction} />
+            ))
+          ) : (
+            <EmptyState
+              icon={SearchX}
+              title="Nenhuma transação encontrada"
+              description={hasActiveFilter ? 'Tente ajustar os filtros para ver mais resultados.' : 'Ainda não existem transações registadas.'}
+            />
+          )}
+          {(searchTerm || selectedType || selectedCategory || startDate || endDate) && (
+            <p className="text-xs text-gray-400 mt-2">
+              Filtros aplicados à página actual. Navegue entre páginas para ver mais resultados.
+            </p>
+          )}
           <Pagination
             page={page}
             totalPages={totalPages}

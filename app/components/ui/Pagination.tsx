@@ -33,20 +33,23 @@ export function Pagination({ page, totalPages, totalElements, pageSize, onPageCh
           {from}–{to} de {totalElements} registos
         </span>
       )}
-      <div className="flex items-center gap-1">
+      <nav aria-label="Paginação" className="flex items-center gap-1">
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page === 0}
+          aria-label="Página anterior"
           className="p-1.5 rounded-md border border-gray-300 disabled:opacity-40 hover:bg-gray-50 transition"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={16} aria-hidden="true" />
         </button>
         {pages.map((p, i) =>
           p === '...'
-            ? <span key={`e${i}`} className="px-2 text-gray-400">…</span>
+            ? <span key={`e${i}`} className="px-2 text-gray-400" aria-hidden="true">…</span>
             : <button
                 key={p}
                 onClick={() => onPageChange(p as number)}
+                aria-label={`Página ${(p as number) + 1}`}
+                aria-current={p === page ? 'page' : undefined}
                 className={`px-3 py-1 rounded-md text-sm font-medium border transition ${
                   p === page
                     ? 'bg-[#00216b] text-white border-[#00216b]'
@@ -59,11 +62,12 @@ export function Pagination({ page, totalPages, totalElements, pageSize, onPageCh
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages - 1}
+          aria-label="Próxima página"
           className="p-1.5 rounded-md border border-gray-300 disabled:opacity-40 hover:bg-gray-50 transition"
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={16} aria-hidden="true" />
         </button>
-      </div>
+      </nav>
     </div>
   );
 }

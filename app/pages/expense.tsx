@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   TrendingDown,
   Filter,
@@ -6,7 +6,8 @@ import {
   ChevronDown,
   List,
   Tag,
-  Wallet
+  Wallet,
+  SearchX,
 } from 'lucide-react';
 import { Card } from '~/components/dashboard/Card';
 import { ChartCard } from '~/components/dashboard/ChartCard';
@@ -16,17 +17,10 @@ import { AdminLayout } from '~/components/dashboard/AdminLayout';
 import { useTransactionsList } from '~/hooks/use-transactions-query';
 import type { AdminTransactionSummary } from '~/types/admin';
 import { Pagination } from '~/components/ui/Pagination';
+import { SkeletonCards, SkeletonRows } from '~/components/ui/Skeleton';
+import { EmptyState } from '~/components/ui/EmptyState';
+import { PAGE_SIZE, CHART_COLORS } from '~/lib/constants';
 
-const PAGE_SIZE = 50;
-
-/**
- * ExpensesPage Component
- * This page provides a detailed overview of expense transactions,
- * including summary cards, expense trend charts, expense category distribution,
- * and a detailed list of individual expenses with filtering capabilities.
- * Designed for an administrative backoffice view.
- */
-// Backend returns LocalDateTime as number array [year, month, day, hour, min, sec?]
 function parseJavaDate(d: unknown): Date {
   if (Array.isArray(d)) {
     const [y, mo, day, h = 0, min = 0, s = 0] = d as number[];
@@ -48,6 +42,10 @@ const ExpensesPage: React.FC = () => {
   const totalPages = slot?.totalPages ?? 0;
 
   const handlePageChange = (p: number) => { setPage(p); };
+
+  const hasActiveFilter = !!(searchTerm || selectedCategory || startDate || endDate);
+
+  useEffect(() => { setPage(0); }, [searchTerm, selectedCategory, startDate, endDate]);
 
   const detailedExpenses = useMemo(() => apiExpenses.map(tx => ({
     id: tx.id,
@@ -82,7 +80,7 @@ const ExpensesPage: React.FC = () => {
 
   const totalExpenses = useMemo(() => filteredExpenses.reduce((s, e) => s + Math.abs(e.amount), 0), [filteredExpenses]);
   const averageExpense = useMemo(() => filteredExpenses.length > 0 ? totalExpenses / filteredExpenses.length : 0, [totalExpenses, filteredExpenses.length]);
-  const numberOfExpenses = filteredExpenses.length;
+  const numberOfExpenses = hasActiveFilter ? filteredExpenses.length : totalElements;
 
   const uniqueCategories = useMemo(() => {
     const categories = new Set<string>();
@@ -96,8 +94,7 @@ const ExpensesPage: React.FC = () => {
       const cat = e.category || 'Outro';
       map[cat] = (map[cat] || 0) + Math.abs(e.amount);
     });
-    const colors = ['#ef4444', '#FFC107', '#2196F3', '#9C27B0', '#FF5722', '#00BCD4', '#8BC34A'];
-    return Object.entries(map).map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }));
+    return Object.entries(map).map(([name, value], i) => ({ name, value, color: CHART_COLORS[i % CHART_COLORS.length] }));
   }, [filteredExpenses]);
 
   return (
@@ -108,25 +105,22 @@ const ExpensesPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {(() => {
+          {loading ? <SkeletonCards count={4} /> : (() => {
             const overallAvgExp = apiExpenses.length > 0
               ? apiExpenses.reduce((s, e) => s + e.amount, 0) / apiExpenses.length
               : 0;
-            const pctTotalExpenses = filteredExpenseCategoryData.length > 0
-              ? -Math.round((filteredExpenseCategoryData[0].value / Math.max(totalExpenses, 1)) * 100)
-              : 0;
-            const pctAvgExpense = overallAvgExp > 0
+            const pctAvgExpense = hasActiveFilter && overallAvgExp > 0
               ? -Math.round(((averageExpense - overallAvgExp) / overallAvgExp) * 100)
               : 0;
             return (
               <>
-                <Card title="Total de Despesas" value={totalExpenses} icon={TrendingDown} color="danger" trend={true} percentage={pctTotalExpenses} />
-                <Card title="Despesa Média" value={averageExpense} icon={Wallet} color="primary" trend={true} percentage={pctAvgExpense} />
+                <Card title="Total de Despesas" value={totalExpenses} icon={TrendingDown} color="danger" trend={false} percentage={0} />
+                <Card title="Despesa Média" value={averageExpense} icon={Wallet} color="primary" trend={hasActiveFilter} percentage={pctAvgExpense} />
+                <Card title="Nº de Despesas" value={numberOfExpenses} icon={List} color="secondary" isCurrency={false} />
+                <Card title="Categorias Únicas" value={uniqueCategories.length} icon={Tag} color="danger" isCurrency={false} />
               </>
             );
           })()}
-          <Card title="Nº de Despesas" value={numberOfExpenses} icon={List} color="secondary" isCurrency={false} />
-          <Card title="Categorias Únicas" value={uniqueCategories.length} icon={Tag} color="danger" isCurrency={false} />
         </div>
 
         <div className="rounded-md border border-gray-200 bg-white p-6">
@@ -160,21 +154,24 @@ const ExpensesPage: React.FC = () => {
         <div className="rounded-md border border-gray-200 bg-white p-6">
           <h3 className="text-[15px] font-semibold text-gray-900 mb-4">Despesas Detalhadas</h3>
           {loading ? (
-            <p className="text-center text-gray-500 py-8">A carregar...</p>
+            <SkeletonRows count={6} />
+          ) : filteredExpenses.length > 0 ? (
+            filteredExpenses.map(expense => (
+              <ExpenseItem key={expense.id} transaction={expense as any} />
+            ))
           ) : (
-            <div className="overflow-x-auto">
-              <div className="min-w-[700px]">
-                {filteredExpenses.length > 0 ? (
-                  filteredExpenses.map(expense => (
-                    <ExpenseItem key={expense.id} transaction={expense as any} />
-                  ))
-                ) : (
-                  <p className="text-center text-gray-500 py-8">Nenhuma despesa encontrada.</p>
-                )}
-              </div>
-            </div>
+            <EmptyState
+              icon={SearchX}
+              title="Nenhuma despesa encontrada"
+              description={hasActiveFilter ? 'Tente ajustar os filtros para ver mais resultados.' : 'Ainda não existem despesas registadas.'}
+            />
           )}
         </div>
+        {(searchTerm || selectedCategory || startDate || endDate) && (
+          <p className="text-xs text-gray-400">
+            Filtros aplicados à página actual. Navegue entre páginas para ver mais resultados.
+          </p>
+        )}
         <Pagination
           page={page}
           totalPages={totalPages}

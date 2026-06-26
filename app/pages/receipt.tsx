@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   TrendingUp,
   Filter,
@@ -6,15 +6,20 @@ import {
   ChevronDown,
   List,
   Wallet,
-  Tag
+  Tag,
+  SearchX,
 } from 'lucide-react';
 import { Card } from '~/components/dashboard/Card';
 import { ChartCard } from '~/components/dashboard/ChartCard';
 import { PieChartCard } from '~/components/dashboard/PieChartCard';
 import { ReceiptItem } from '~/components/dashboard/ReceiptItem';
 import { AdminLayout } from '~/components/dashboard/AdminLayout';
+import { Pagination } from '~/components/ui/Pagination';
 import { useTransactionsList } from '~/hooks/use-transactions-query';
 import type { AdminTransactionSummary } from '~/types/admin';
+import { SkeletonCards, SkeletonRows } from '~/components/ui/Skeleton';
+import { EmptyState } from '~/components/ui/EmptyState';
+import { PAGE_SIZE, CHART_COLORS } from '~/lib/constants';
 
 function parseJavaDate(d: unknown): Date {
   if (Array.isArray(d)) {
@@ -29,9 +34,18 @@ const ReceiptsPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [page, setPage] = useState(0);
 
-  const { data: slot, isLoading: loading } = useTransactionsList('INCOME', 0);
+  const { data: slot, isLoading: loading } = useTransactionsList('INCOME', page);
   const apiReceipts: AdminTransactionSummary[] = slot?.content ?? [];
+  const totalElements = slot?.totalElements ?? 0;
+  const totalPages = slot?.totalPages ?? 0;
+
+  const handlePageChange = (p: number) => { setPage(p); };
+
+  const hasActiveFilter = !!(searchTerm || selectedCategory || startDate || endDate);
+
+  useEffect(() => { setPage(0); }, [searchTerm, selectedCategory, startDate, endDate]);
 
   const detailedReceipts = useMemo(() => apiReceipts.map(tx => ({
     id: tx.id,
@@ -65,7 +79,7 @@ const ReceiptsPage: React.FC = () => {
 
   const totalIncome = useMemo(() => filteredReceipts.reduce((s, r) => s + r.amount, 0), [filteredReceipts]);
   const averageIncome = useMemo(() => filteredReceipts.length > 0 ? totalIncome / filteredReceipts.length : 0, [totalIncome, filteredReceipts.length]);
-  const numberOfReceipts = filteredReceipts.length;
+  const numberOfReceipts = hasActiveFilter ? filteredReceipts.length : totalElements;
 
   const uniqueCategories = useMemo(() => {
     const s = new Set<string>();
@@ -85,8 +99,7 @@ const ReceiptsPage: React.FC = () => {
       const src = r.source || 'Outros';
       map[src] = (map[src] || 0) + r.amount;
     });
-    const colors = ['#4CAF50', '#FFC107', '#2196F3', '#9C27B0', '#FF5722', '#00BCD4', '#8BC34A'];
-    return Object.entries(map).map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }));
+    return Object.entries(map).map(([name, value], i) => ({ name, value, color: CHART_COLORS[i % CHART_COLORS.length] }));
   }, [filteredReceipts]);
 
   return (
@@ -97,25 +110,22 @@ const ReceiptsPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {(() => {
+          {loading ? <SkeletonCards count={4} /> : (() => {
             const overallAvg = apiReceipts.length > 0
               ? apiReceipts.reduce((s, r) => s + r.amount, 0) / apiReceipts.length
               : 0;
-            const pctTotalIncome = filteredIncomeSourceData.length > 0
-              ? Math.round((filteredIncomeSourceData[0].value / Math.max(totalIncome, 1)) * 100)
-              : 0;
-            const pctAvgIncome = overallAvg > 0
+            const pctAvgIncome = hasActiveFilter && overallAvg > 0
               ? Math.round(((averageIncome - overallAvg) / overallAvg) * 100)
               : 0;
             return (
               <>
-                <Card title="Total de Receitas" value={totalIncome} icon={TrendingUp} color="success" trend={true} percentage={pctTotalIncome} />
-                <Card title="Receita Média" value={averageIncome} icon={Wallet} color="primary" trend={true} percentage={pctAvgIncome} />
+                <Card title="Total de Receitas" value={totalIncome} icon={TrendingUp} color="success" trend={false} percentage={0} />
+                <Card title="Receita Média" value={averageIncome} icon={Wallet} color="primary" trend={hasActiveFilter} percentage={pctAvgIncome} />
+                <Card title="Nº de Receitas" value={numberOfReceipts} icon={List} color="secondary" isCurrency={false} />
+                <Card title="Fontes Únicas" value={uniqueSources.length} icon={Tag} color="success" isCurrency={false} />
               </>
             );
           })()}
-          <Card title="Nº de Receitas" value={numberOfReceipts} icon={List} color="secondary" isCurrency={false} />
-          <Card title="Fontes Únicas" value={uniqueSources.length} icon={Tag} color="success" isCurrency={false} />
         </div>
 
         <div className="rounded-md border border-gray-200 bg-white p-6">
@@ -149,20 +159,30 @@ const ReceiptsPage: React.FC = () => {
         <div className="rounded-md border border-gray-200 bg-white p-6">
           <h3 className="text-[15px] font-semibold text-gray-900 mb-4">Receitas Detalhadas</h3>
           {loading ? (
-            <p className="text-center text-gray-500 py-8">A carregar...</p>
+            <SkeletonRows count={6} />
+          ) : filteredReceipts.length > 0 ? (
+            filteredReceipts.map(r => (
+              <ReceiptItem key={r.id} receipt={r as any} />
+            ))
           ) : (
-            <div className="overflow-x-auto">
-              <div className="min-w-[700px]">
-                {filteredReceipts.length > 0 ? (
-                  filteredReceipts.map(r => (
-                    <ReceiptItem key={r.id} receipt={r as any} />
-                  ))
-                ) : (
-                  <p className="text-center text-gray-500 py-8">Nenhuma receita encontrada.</p>
-                )}
-              </div>
-            </div>
+            <EmptyState
+              icon={SearchX}
+              title="Nenhuma receita encontrada"
+              description={hasActiveFilter ? 'Tente ajustar os filtros para ver mais resultados.' : 'Ainda não existem receitas registadas.'}
+            />
           )}
+          {(searchTerm || selectedCategory || startDate || endDate) && (
+            <p className="text-xs text-gray-400 mt-2">
+              Filtros aplicados à página actual. Navegue entre páginas para ver mais resultados.
+            </p>
+          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalElements={totalElements}
+            pageSize={PAGE_SIZE}
+            onPageChange={handlePageChange}
+          />
         </div>
       </div>
     </AdminLayout>
